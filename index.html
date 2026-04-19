@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>龍潭大池拼圖系統 V3.5 - 多重解全面優化版</title>
+    <title>龍潭大池拼圖系統 V3.6</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
@@ -10,42 +10,34 @@
         body { font-family: "Microsoft JhengHei", sans-serif; background: #f0f4f8; margin: 0; display: flex; flex-direction: column; align-items: center; }
         .header { width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; padding: 15px 0; text-align: center; }
         #main-container { display: flex; justify-content: center; padding: 20px; gap: 20px; }
-        
         #game-area { position: relative; width: 1000px; height: 707px; border: 4px solid #333; background: #fff; overflow: hidden; border-radius: 4px; }
         #map-bg { width: 1000px; height: 707px; object-fit: fill; position: absolute; top:0; left:0; z-index: 1; }
         #svg-layer { position: absolute; top: 0; left: 0; width: 1000px; height: 707px; z-index: 100; }
-        
         #race-start-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
         .start-btn { padding: 20px 60px; font-size: 32px; background: var(--accent); color: white; border: none; border-radius: 50px; cursor: pointer; transition: 0.3s; font-weight: bold; box-shadow: 0 0 20px var(--accent); }
         .start-btn:hover { transform: scale(1.1); background: #ff7043; }
         .rule-card { margin-top: 30px; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.2); text-align: left; line-height: 1.8; }
-
         @keyframes flash-red { 0% { background: transparent; } 50% { background: rgba(255,0,0,0.4); } 100% { background: transparent; } }
         .flash-active { animation: flash-red 0.3s ease-in-out; }
         #flash-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; pointer-events: none; }
-
         #mission-panel { width: 320px; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .current-piece-box { width: 100%; height: 280px; margin: 15px 0; border: 2px solid var(--secondary); border-radius: 16px; background: #e0f7fa; display: flex; align-items: center; justify-content: center; }
         #active-box img { max-width: 240px; max-height: 240px; cursor: pointer; }
         .btn { padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 8px; }
-        
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
         .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 380px; }
         .login-box input { width: 85%; padding: 12px; margin: 10px 0; border: 2px solid #ddd; border-radius: 10px; text-align: center; }
         .mode-btn { padding: 20px; border-radius: 12px; border: 2px solid var(--secondary); cursor: pointer; margin-top: 15px; background: white; transition: 0.2s; }
         .mode-btn:hover { background: #e0f7fa; }
-
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 20000; backdrop-filter: blur(4px); }
         .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 20px; width: 400px; z-index: 20001; text-align: center; border: 4px solid var(--secondary); }
-        #dialog-msg { color: var(--danger); font-weight: bold; margin-bottom: 10px; height: 20px; }
+        #dialog-msg { color: var(--danger); font-weight: bold; margin-bottom: 10px; min-height: 20px; }
         #dialog-input { width: 80%; padding: 15px; font-size: 24px; text-align: center; border: 2px solid #ccc; border-radius: 10px; margin-bottom: 20px; text-transform: uppercase; }
-
         .target-poly { fill: rgba(255,255,255,0.01); cursor: pointer; }
         .target-poly:hover { fill: rgba(0, 172, 193, 0.2); }
         .liquid-glass-polygon { fill: url(#liquidGradient); filter: url(#liquidRefraction); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1.5; mix-blend-mode: hard-light; pointer-events: none; }
         .flying-piece { position: absolute; z-index: 200; transition: all 0.6s; width: 200px !important; pointer-events: none; }
         .race-info { background: #fff3e0; padding: 10px; border-radius: 10px; border: 1px solid #ffe0b2; margin-top: 10px; font-size: 14px; color: #e65100; }
-        
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     </style>
@@ -54,7 +46,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V3.5</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V3.6</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="請輸入學號">
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -134,7 +126,7 @@
     <p id="dialog-msg"></p>
     <input id="dialog-input" maxlength="3" autocomplete="off" placeholder="SSS/SAS...">
     <div id="admin-content" style="display:none;"></div>
-    <div id="dialog-btns">
+    <div id="dialog-btns" style="display:flex; justify-content: space-around;">
         <button id="dialog-confirm" class="btn" style="background:var(--secondary); color:white; width:45%;">確定 (Enter)</button>
         <button id="dialog-close-btn" class="btn" style="background:#ccc; width:45%;" onclick="closeModal()">取消 (ESC)</button>
     </div>
@@ -156,7 +148,6 @@
     let raceTimer = null, startTime = 0, rawSeconds = 0, penaltySeconds = 0;
     const ADMIN_ID = "9999999", ADMIN_PWD = "ji3g4xl3g ";
 
-    // --- 登入流程 ---
     async function checkID() {
         const id = document.getElementById('login-id').value.trim();
         if (id.length !== 7) return alert("學號為7位數字");
@@ -219,14 +210,9 @@
     function resetCurrentGame() { if(confirm("確定要重來嗎？")) { if(mode==='race') { clearInterval(raceTimer); document.getElementById('race-start-overlay').style.display = 'flex'; } else { currentNum=1; initGame(); } } }
 
     function triggerErrorFlash(sec, msg) {
-        if (mode === 'race') { 
-            penaltySeconds += sec; 
-            const m = document.getElementById('dialog-msg');
-            if (m) { m.innerText = msg; }
-        } else {
-            const m = document.getElementById('dialog-msg');
-            if (m) { m.innerText = "答錯囉，再觀察一下！"; }
-        }
+        if (mode === 'race') { penaltySeconds += sec; }
+        const m = document.getElementById('dialog-msg');
+        if (m) m.innerText = msg || (mode==='race'?"":"答錯囉，再觀察一下！");
         const overlay = document.getElementById('flash-overlay');
         overlay.classList.add('flash-active');
         setTimeout(() => overlay.classList.remove('flash-active'), 300);
@@ -243,12 +229,20 @@
         const dialog = document.getElementById('custom-dialog');
         const input = document.getElementById('dialog-input');
         const msg = document.getElementById('dialog-msg');
+        const btns = document.getElementById('dialog-btns');
+        const admin = document.getElementById('admin-content');
+        
         document.getElementById('dialog-title').innerText = "正確！請判斷性質";
         msg.innerText = ""; input.value = ""; 
-        document.getElementById('dialog-btns').style.display = 'flex';
-        document.getElementById('admin-content').style.display = 'none';
+        
+        // 🛠️ 核心修正：強制顯示輸入區域
+        input.style.display = 'inline-block';
+        btns.style.display = 'flex';
+        admin.style.display = 'none';
+        
         modal.style.display = 'block'; dialog.style.display = 'block';
         setTimeout(() => input.focus(), 50);
+
         document.getElementById('dialog-confirm').onclick = () => {
             const val = input.value.toUpperCase().trim();
             if (answers[tId].includes(val)) {
@@ -302,8 +296,7 @@
 
     function playAnimate(id) {
         const pts = triangleData[id];
-        const cX = (pts[0].x + pts[1].x + pts[2].x) / 3; 
-        const cY = (pts[0].y + pts[1].y + pts[2].y) / 3 * (707/750);
+        const cX = (pts[0].x + pts[1].x + pts[2].x) / 3; const cY = (pts[0].y + pts[1].y + pts[2].y) / 3 * (707/750);
         const img = document.createElement('img'); img.src = `piece${id}.png`; img.className = 'flying-piece';
         img.style.left = "80%"; img.style.top = "50%"; document.getElementById('animation-layer').appendChild(img);
         setTimeout(() => {
@@ -319,7 +312,7 @@
 
     async function showRank() {
         const snap = await db.collection("leaderboard").orderBy("total").limit(50).get();
-        let html = "<table><tr><th>排名</th><th>姓名</th><th>成績</th><th>時間/懲罰</th></tr>";
+        let html = "<table><tr><th>排名</th><th>姓名</th><th>成績</th><th>原始/懲罰</th></tr>";
         let i = 1; snap.forEach(doc => {
             const d = doc.data(); html += `<tr><td>${i++}</td><td>${d.name}</td><td><b>${d.total}s</b></td><td>${d.raw}s/+${d.penalty}s</td></tr>`;
         });
