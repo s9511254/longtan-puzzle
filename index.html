@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>龍潭大池拼圖系統 V4.7</title>
+    <title>龍潭大池拼圖系統 V4.8</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -35,14 +35,15 @@
         .liquid-glass-polygon { fill: url(#liquidGradient); filter: url(#liquidRefraction); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1.5; pointer-events: none; }
         .flying-piece { position: absolute; z-index: 200; transition: all 0.6s; pointer-events: none; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border-bottom: 1px solid #eee; padding: 12px 5px; text-align: center; }
+        th, td { border-bottom: 1px solid #eee; padding: 12px 5px; text-align: center; font-size: 14px; }
+        .admin-section { margin-top: 20px; border-top: 2px dashed #ccc; padding-top: 15px; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V4.7</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V4.8</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:12px; margin-bottom:15px; text-align:center;">
             <button class="btn" style="background:var(--primary); color:white;" onclick="checkID()">下一步</button>
@@ -259,7 +260,6 @@
                 onConfirm: (val) => {
                     if (answers[tId].includes(val)) { closeModal(); playAnimate(tId); }
                     else { 
-                        // 💡 練習模式不顯示加秒
                         const errMsg = (mode === 'race') ? "性質判斷錯誤！(+20s)" : "性質答錯囉，再觀察一下！";
                         triggerErrorFlash(20, errMsg); 
                     }
@@ -299,12 +299,46 @@
     }
 
     async function showAdmin() {
-        const snap = await db.collection("players").get();
-        let h = "<table><tr><th>學號</th><th>姓名</th><th>密碼</th><th>管理</th></tr>";
-        snap.forEach(doc => { if (doc.id !== ADMIN_ID) h += `<tr><td>${doc.id}</td><td>${doc.data().name}</td><td>${doc.data().password}</td><td><button onclick="deleteUser('${doc.id}')" style="color:red">刪除</button></td></tr>`; });
-        openCustomDialog({ title: "⚙️ 管理後台", contentHtml: h + "</table>" });
+        const snapPlayers = await db.collection("players").get();
+        const snapLeader = await db.collection("leaderboard").get();
+        
+        let h = "<h3>👥 帳號管理</h3><table><tr><th>學號</th><th>姓名</th><th>密碼</th><th>操作</th></tr>";
+        snapPlayers.forEach(doc => { if (doc.id !== ADMIN_ID) h += `<tr><td>${doc.id}</td><td>${doc.data().name}</td><td>${doc.data().password}</td><td><button onclick="deleteUser('${doc.id}')" style="color:red">刪除</button></td></tr>`; });
+        
+        h += "</table><div class='admin-section'><h3>🏆 排行榜紀錄管理</h3>";
+        h += "<button class='btn' style='background:var(--danger); color:white; width:auto; padding:8px 15px;' onclick='clearAllLeaderboard()'>🧨 全部清空排行榜</button>";
+        h += "<table><tr><th>學生</th><th>過關</th><th>秒數</th><th>操作</th></tr>";
+        snapLeader.forEach(doc => {
+            const d = doc.data();
+            h += `<tr><td>${d.name}</td><td>${d.progress}</td><td>${d.total}s</td><td><button onclick="deleteLeaderEntry('${doc.id}')" style="color:red">刪除</button></td></tr>`;
+        });
+        h += "</table></div>";
+        
+        openCustomDialog({ title: "⚙️ 管理後台", contentHtml: h });
     }
-    async function deleteUser(id) { if(confirm(`刪除 ${id}？`)) { await db.collection("players").doc(id).delete(); showAdmin(); } }
+
+    async function deleteUser(id) { if(confirm(`確定要刪除帳號 ${id} 嗎？此動作不可逆！`)) { await db.collection("players").doc(id).delete(); showAdmin(); } }
+    
+    async function deleteLeaderEntry(docId) {
+        if(confirm(`確定要刪除這筆排行榜紀錄嗎？`)) {
+            await db.collection("leaderboard").doc(docId).delete();
+            showAdmin();
+        }
+    }
+
+    async function clearAllLeaderboard() {
+        if(confirm("🚨 警告：確定要清空『所有』學生的排行榜紀錄嗎？")) {
+            if(confirm("最後一次確認：確定清空？")) {
+                const snap = await db.collection("leaderboard").get();
+                const batch = db.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                alert("排行榜已全數清空。");
+                showAdmin();
+            }
+        }
+    }
+
     async function updateRaceLeaderboard() { if (mode==='race') db.collection("leaderboard").doc(user.id).set({ id: user.id, name: user.name, total: rawSeconds + penaltySeconds, progress: (currentNum - 1), raw: rawSeconds, penalty: penaltySeconds, time: firebase.firestore.FieldValue.serverTimestamp() }); }
     
     function updateGame() {
