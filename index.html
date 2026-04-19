@@ -2,48 +2,48 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>龍潭大池拼圖系統 V4.8</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>龍潭大池拼圖系統 V5.1</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         :root { --primary: #00796b; --secondary: #00acc1; --accent: #ff5722; --danger: #e91e63; --dark: #263238; --gold: #ffc107; }
-        body { font-family: "Microsoft JhengHei", sans-serif; background: #f0f4f8; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        .header { width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; padding: 15px 0; text-align: center; }
-        #main-container { display: flex; justify-content: center; padding: 20px; gap: 20px; }
-        #game-area { position: relative; width: 1000px; height: 707px; border: 4px solid #333; background: #fff; overflow: hidden; border-radius: 4px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        body { font-family: "Microsoft JhengHei", sans-serif; background: #f0f4f8; margin: 0; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+        .header { width: 100%; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); color: white; padding: 10px 0; text-align: center; cursor: pointer; user-select: none; }
+        #main-container { display: flex; flex-direction: row; justify-content: center; align-items: flex-start; padding: 10px; gap: 15px; max-width: 100vw; }
+        #game-wrapper { position: relative; width: 1000px; height: 707px; transform-origin: top left; }
+        #game-area { position: relative; width: 1000px; height: 707px; border: 4px solid #333; background: #fff; overflow: hidden; border-radius: 4px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
         #map-bg { width: 1000px; height: 707px; object-fit: fill; position: absolute; top:0; left:0; z-index: 1; }
         #svg-layer { position: absolute; top: 0; left: 0; width: 1000px; height: 707px; z-index: 100; }
-        #race-start-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; }
-        .start-btn { padding: 25px 80px; font-size: 42px; background: var(--accent); color: white; border: none; border-radius: 60px; cursor: pointer; transition: 0.3s; font-weight: bold; box-shadow: 0 0 30px var(--accent); animation: breathe 2s infinite ease-in-out; }
-        @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        #flash-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; pointer-events: none; background: transparent; }
-        .flash-active { animation: flash-red 0.3s ease-in-out; }
-        @keyframes flash-red { 0%, 100% { background: transparent; } 50% { background: rgba(255,0,0,0.5); } }
-        #mission-panel { width: 320px; background: #fff; padding: 20px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .current-piece-box { width: 100%; height: 280px; margin: 15px 0; border: 3px solid var(--accent); border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        #active-box img { max-width: 260px; max-height: 260px; pointer-events: none; }
-        .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 8px; font-size: 16px; transition: 0.2s; }
+        #race-start-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; box-sizing: border-box; }
+        .start-btn { padding: 20px 60px; font-size: 36px; background: var(--accent); color: white; border: none; border-radius: 60px; cursor: pointer; transition: 0.3s; font-weight: bold; }
+        #mission-panel { width: 300px; background: #fff; padding: 15px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0; }
+        .current-piece-box { width: 100%; height: 200px; margin: 10px 0; border: 3px solid var(--accent); border-radius: 12px; background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        #active-box img { max-width: 180px; max-height: 180px; pointer-events: none; }
+        .btn { padding: 10px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 8px; font-size: 15px; }
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 20000; backdrop-filter: blur(4px); }
-        .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 35px; border-radius: 24px; width: 450px; z-index: 20001; text-align: center; border: 6px solid var(--secondary); }
-        #dialog-input { width: 85%; padding: 15px; font-size: 28px; text-align: center; border: 3px solid var(--secondary); border-radius: 12px; margin-bottom: 20px; text-transform: uppercase; }
+        .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 20px; width: 90%; max-width: 400px; z-index: 20001; text-align: center; border: 5px solid var(--secondary); }
+        #dialog-input { width: 85%; padding: 12px; font-size: 24px; text-align: center; border: 3px solid var(--secondary); border-radius: 10px; margin-bottom: 15px; text-transform: uppercase; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
         .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 400px; }
-        .victory-card { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border-radius: 30px; text-align: center; z-index: 30000; width: 520px; border: 8px solid var(--gold); }
+        .victory-card { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 30px; text-align: center; z-index: 30000; width: 90%; max-width: 450px; border: 6px solid var(--gold); }
         .target-poly { fill: rgba(255,255,255,0.01); cursor: pointer; }
-        .target-poly:hover { fill: rgba(0, 172, 193, 0.2); }
         .liquid-glass-polygon { fill: url(#liquidGradient); filter: url(#liquidRefraction); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1.5; pointer-events: none; }
         .flying-piece { position: absolute; z-index: 200; transition: all 0.6s; pointer-events: none; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { border-bottom: 1px solid #eee; padding: 12px 5px; text-align: center; font-size: 14px; }
-        .admin-section { margin-top: 20px; border-top: 2px dashed #ccc; padding-top: 15px; }
+        @media screen and (max-width: 1100px) { #main-container { flex-direction: column; align-items: center; } #mission-panel { width: 95%; order: -1; } }
+        #flash-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; pointer-events: none; }
+        .flash-active { animation: flash-red 0.3s ease-in-out; }
+        @keyframes flash-red { 0%, 100% { background: transparent; } 50% { background: rgba(255,0,0,0.4); } }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        th, td { border-bottom: 1px solid #eee; padding: 8px 4px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V4.8</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V5.0</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:12px; margin-bottom:15px; text-align:center;">
             <button class="btn" style="background:var(--primary); color:white;" onclick="checkID()">下一步</button>
@@ -60,91 +60,124 @@
             <button class="btn" style="background:var(--primary); color:white;" onclick="handleRegister()">完成註冊</button>
         </div>
         <div id="step-mode" style="display:none;">
-            <h3>模式選擇</h3>
-            <button class="btn" style="padding:20px; font-size:22px; background:white; border:2px solid var(--secondary); margin-bottom:10px;" onclick="startGame('practice')">🏋️ 練習模式</button>
-            <button class="btn" style="padding:20px; font-size:22px; background:white; border:2px solid var(--secondary); margin-bottom:10px;" onclick="startGame('race')">🏆 競賽模式</button>
+            <h3 style="margin: 10px 0;">模式選擇</h3>
+            <button class="btn" style="padding:15px; background:white; border:2px solid var(--secondary);" onclick="startGame('practice')">🏋️ 練習模式</button>
+            <button class="btn" style="padding:15px; background:white; border:2px solid var(--secondary);" onclick="startGame('race')">🏆 競賽模式</button>
             <button id="admin-main-btn" class="btn" style="display:none; background:#3f51b5; color:white; padding:15px;" onclick="showAdmin()">⚙️ 管理後台</button>
         </div>
     </div>
 </div>
 
 <div id="victory-modal" class="victory-card">
-    <h1 style="color:var(--gold); font-size:52px; margin:0;">WINNER!</h1>
-    <p style="font-size:22px; color:#666;">達成 36 關滿貫！成績：</p>
-    <div style="font-size:80px; font-weight:bold; color:var(--primary); margin:20px 0;"><span id="final-total-score">0</span>s</div>
-    <button class="btn" style="background:var(--gold); color:black; font-size:20px; padding:15px;" onclick="backToModeSelect()">太棒了，返回模式選擇</button>
+    <h1 style="color:var(--gold); margin:0;">WINNER!</h1>
+    <p>達成 36 關滿貫！</p>
+    <div style="font-size:60px; font-weight:bold; color:var(--primary); margin:10px 0;"><span id="final-total-score">0</span>s</div>
+    <button class="btn" style="background:var(--gold); color:black;" onclick="backToModeSelect()">返回模式選擇</button>
 </div>
 
-<div class="header"><h1>🧩 龍潭大池全等三角形拼圖</h1></div>
+<div class="header" onclick="handleDevClick()"><h1>🧩 龍潭大池全等三角形拼圖</h1></div>
 
 <div id="main-container">
-    <div id="game-area">
-        <div id="race-start-overlay">
-            <button class="start-btn" onclick="beginRaceNow()">🚀 開始挑戰</button>
-            <div style="margin-top:40px; background:rgba(255,255,255,0.1); padding:25px; border-radius:20px; text-align:left; color:white; width:60%; line-height:1.8; font-size:18px;">
-                <b>📏 規則說明：</b><br>
-                1. 📍 觀察右側題目，直接點擊地圖正確位置。<br>
-                2. 📐 位置點錯罰 10s (直接紅閃)，性質判錯罰 20s。<br>
-                3. 🥇 排行榜依過關數與總秒數排名。
+    <div id="game-wrapper-outer">
+        <div id="game-wrapper">
+            <div id="game-area">
+                <div id="race-start-overlay">
+                    <button class="start-btn" onclick="beginRaceNow()">🚀 開始挑戰</button>
+                </div>
+                <div id="flash-overlay"></div>
+                <img id="map-bg" src="bg00.jpg">
+                <svg id="svg-layer" viewBox="0 0 1000 707">
+                    <defs>
+                        <radialGradient id="liquidGradient" cx="50%" cy="50%" r="80%" fx="30%" fy="30%"><stop offset="0%" style="stop-color:#e0f7fa; stop-opacity:0.4" /><stop offset="100%" style="stop-color:#b2ebf2; stop-opacity:0.2" /></radialGradient>
+                        <filter id="liquidRefraction" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/><feSpecularLighting in="blur" surfaceScale="3" specularConstant="1" specularExponent="40" lighting-color="#ffffff" result="specOut"><fePointLight x="-5000" y="-10000" z="20000"/></feSpecularLighting><feComposite in="specOut" in2="SourceAlpha" operator="in" result="specChar"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="specChar"/></feMerge></filter>
+                    </defs>
+                    <g id="placed-polygons"></g><g id="sensor-layer"></g>
+                </svg>
+                <div id="animation-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:150; pointer-events:none;"></div>
             </div>
         </div>
-        <div id="flash-overlay"></div>
-        <img id="map-bg" src="bg00.jpg">
-        <svg id="svg-layer" viewBox="0 0 1000 707">
-            <defs>
-                <radialGradient id="liquidGradient" cx="50%" cy="50%" r="80%" fx="30%" fy="30%"><stop offset="0%" style="stop-color:#e0f7fa; stop-opacity:0.4" /><stop offset="100%" style="stop-color:#b2ebf2; stop-opacity:0.2" /></radialGradient>
-                <filter id="liquidRefraction" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/><feSpecularLighting in="blur" surfaceScale="3" specularConstant="1" specularExponent="40" lighting-color="#ffffff" result="specOut"><fePointLight x="-5000" y="-10000" z="20000"/></feSpecularLighting><feComposite in="specOut" in2="SourceAlpha" operator="in" result="specChar"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="specChar"/></feMerge></filter>
-            </defs>
-            <g id="placed-polygons"></g><g id="sensor-layer"></g>
-        </svg>
-        <div id="animation-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:150; pointer-events:none;"></div>
     </div>
 
     <div id="mission-panel">
-        <p id="user-info" style="font-weight:bold; color:var(--primary);"></p>
-        <h3 id="prog-text">進度：1 / 36</h3>
+        <p id="user-info" style="font-weight:bold; color:var(--primary); margin: 0;"></p>
+        <h3 id="prog-text" style="margin: 5px 0;">進度：1 / 36</h3>
         <div style="width:100%; height:8px; background:#e0e0e0; border-radius:4px; overflow:hidden;"><div id="progress-fill" style="width:0%; height:100%; background:var(--secondary); transition:0.3s;"></div></div>
         <div id="active-box" class="current-piece-box"></div>
-        <p style="text-align:center; color:var(--accent); font-weight:bold;">↑ 找此圖在地圖的位置 ↑</p>
-        <div id="race-stats" style="display:none; background:#fff3e0; padding:12px; border-radius:12px; color:#e65100; font-size:15px; margin-bottom:10px;">
-            ⏱️ 用時：<span id="stat-time">00:00</span> (+<span id="stat-penalty">0</span>s)<br>🏆 <b>總計：<span id="stat-total">0</span>s</b>
+        <div id="race-stats" style="display:none; background:#fff3e0; padding:8px; border-radius:10px; color:#e65100; font-size:13px; margin-bottom:5px;">
+            ⏱️ 用時：<span id="stat-time">00:00</span> (+<span id="stat-penalty">0</span>s) 🏆 <b>總計：<span id="stat-total">0</span>s</b>
         </div>
-        <button class="btn" style="background:var(--gold);" onclick="showRank()">🏆 即時排行榜</button>
+        <button class="btn" style="background:var(--gold);" onclick="showRank()">🏆 排行榜</button>
         <button class="btn" style="background:#9e9e9e; color:white;" onclick="confirmRestartGame()">🔄 重新開始</button>
         <button class="btn" style="background:var(--danger); color:white;" onclick="backToModeSelect()">🏠 返回模式</button>
-        <button id="admin-side-btn" class="btn" style="display:none; background:#3f51b5; color:white;" onclick="showAdmin()">⚙️ 管理後台</button>
+        <button id="admin-side-btn" class="btn" style="display:none; background:#3f51b5; color:white;" onclick="showAdmin()">⚙️ 管理</button>
     </div>
 </div>
 
 <div id="modal-overlay"></div>
 <div id="custom-dialog" class="custom-dialog">
-    <h2 id="dialog-title">性質判斷</h2>
+    <h2 id="dialog-title" style="margin:0;">性質判斷</h2>
     <p id="dialog-msg"></p>
-    <input id="dialog-input" maxlength="4" autocomplete="off" placeholder="請輸入性質" inputmode="latin">
-    <div id="admin-content" style="display:none; max-height: 450px; overflow-y: auto;"></div>
-    <div id="dialog-btns" style="display:flex; justify-content:space-around; gap:15px; margin-top:10px;">
+    <input id="dialog-input" maxlength="4" autocomplete="off" placeholder="例如: SAS" inputmode="latin">
+    <div id="admin-content" style="display:none; max-height: 300px; overflow-y: auto;"></div>
+    <div id="dialog-btns" style="display:flex; justify-content:space-around; gap:10px; margin-top:10px;">
         <button id="dialog-confirm" class="btn" style="background:var(--secondary); color:white; flex:1;">確定 (Enter)</button>
         <button id="dialog-cancel" class="btn" style="background:#ccc; flex:1;" onclick="closeModal()">取消 (ESC)</button>
     </div>
 </div>
 
 <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyAxd1n_6-4KUDALQztN2_8cusSljWxq9mo",
-        authDomain: "longtan-puzzle-system.firebaseapp.com",
-        projectId: "longtan-puzzle-system",
-        storageBucket: "longtan-puzzle-system.firebasestorage.app",
-        messagingSenderId: "634507608403",
-        appId: "1:634507608403:web:1c64d268316847004be1a6"
-    };
+    const firebaseConfig = { apiKey: "AIzaSyAxd1n_6-4KUDALQztN2_8cusSljWxq9mo", authDomain: "longtan-puzzle-system.firebaseapp.com", projectId: "longtan-puzzle-system", storageBucket: "longtan-puzzle-system.firebasestorage.app", messagingSenderId: "634507608403", appId: "1:634507608403:web:1c64d268316847004be1a6" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     let user = null, mode = 'practice', currentNum = 1;
     let raceTimer = null, startTime = 0, rawSeconds = 0, penaltySeconds = 0;
+    let devClicks = 0;
     const ADMIN_ID = "9999999", ADMIN_PWD = "ji3g4xl3g ";
 
-    function openCustomDialog({ title, msg = "", isPrompt = false, onConfirm, onCancel, contentHtml = "" }) {
+    // 💡 隱藏測試工具：連點標題 5 下
+    function handleDevClick() {
+        if (!user || user.id !== ADMIN_ID) return; // 👈 加入這一行，學生點爛標題都沒反應
+        devClicks++;
+        if (devClicks >= 5) {
+            devClicks = 0;
+            const target = prompt("【開發者指令】\n1-36: 跳到指定關卡\n99: 啟動全自動通關測試", currentNum);
+            if (target == "99") startAutoTest();
+            else if (target >= 1 && target <= 36) { currentNum = parseInt(target); initGame(); }
+        }
+    }
+
+    // 💡 全自動跑通關邏輯
+    async function startAutoTest() {
+        if (!confirm("確定要啟動全自動測試嗎？系統將每 0.5 秒過一關。")) return;
+        while (currentNum <= 36) {
+            const id = currentNum.toString().padStart(2, '0');
+            // 直接模擬填寫正確答案並過關
+            const correctAns = answers[id][0];
+            await new Promise(r => setTimeout(r, 500));
+            playAnimate(id);
+        }
+    }
+
+    function handleResize() {
+        const wrapper = document.getElementById('game-wrapper');
+        const outer = document.getElementById('game-wrapper-outer');
+        const winW = window.innerWidth - 40;
+        if (winW < 1000) {
+            const ratio = winW / 1000;
+            wrapper.style.transform = `scale(${ratio})`;
+            outer.style.width = (1000 * ratio) + "px";
+            outer.style.height = (707 * ratio) + "px";
+        } else {
+            wrapper.style.transform = `scale(1)`;
+            outer.style.width = "1000px";
+            outer.style.height = "707px";
+        }
+    }
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('DOMContentLoaded', handleResize);
+
+    function openCustomDialog({ title, msg = "", isPrompt = false, onConfirm, contentHtml = "" }) {
         const modal = document.getElementById('modal-overlay');
         const dialog = document.getElementById('custom-dialog');
         const input = document.getElementById('dialog-input');
@@ -200,13 +233,8 @@
         if (!user) { location.reload(); return; }
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('user-info').innerText = `👤 ${user.name} (${mode==='race'?'競賽':'練習'})`;
-        
-        if (mode === 'race') { 
-            document.getElementById('race-start-overlay').style.display = 'flex'; 
-            document.getElementById('race-stats').style.display = 'block'; 
-        } else { 
-            document.getElementById('race-start-overlay').style.display = 'none'; 
-            document.getElementById('race-stats').style.display = 'none'; 
+        if (mode === 'race') { document.getElementById('race-start-overlay').style.display = 'flex'; document.getElementById('race-stats').style.display = 'block'; }
+        else { 
             const doc = await db.collection("players").doc(user.id).get();
             const prog = doc.exists ? (doc.data().progress || 1) : 1;
             currentNum = prog > 36 ? 1 : prog;
@@ -226,7 +254,7 @@
         initGame();
     }
 
-    function initGame() { restoreProgress(currentNum); initAllSensors(); updateGame(); }
+    function initGame() { restoreProgress(currentNum); initAllSensors(); updateGame(); handleResize(); }
     
     function backToModeSelect() { 
         if(raceTimer) clearInterval(raceTimer); 
@@ -235,8 +263,6 @@
         document.getElementById('victory-modal').style.display = 'none';
         document.getElementById('login-overlay').style.display = 'flex'; 
         document.getElementById('step-mode').style.display = 'block';
-        document.getElementById('step-id').style.display = 'none';
-        document.getElementById('step-pwd').style.display = 'none';
     }
     
     function confirmRestartGame() { openCustomDialog({ title: "🔄 確定重來？", msg: "進度將會歸零，確定嗎？", onConfirm: () => { closeModal(); if(mode==='race') { clearInterval(raceTimer); document.getElementById('race-start-overlay').style.display = 'flex'; } else { currentNum = 1; initGame(); } } }); }
@@ -282,63 +308,27 @@
 
     async function showRank() {
         const snap = await db.collection("leaderboard").get();
-        let bestScores = {};
-        snap.forEach(doc => {
-            const d = doc.data();
-            if (d.progress !== undefined && d.id) {
-                if (!bestScores[d.id] || d.progress > bestScores[d.id].progress || (d.progress === bestScores[d.id].progress && d.total < bestScores[d.id].total)) {
-                    bestScores[d.id] = d;
-                }
-            }
-        });
-        let list = Object.values(bestScores);
+        let list = []; snap.forEach(doc => list.push(doc.data()));
         list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total);
-        let h = "<table><tr><th>排名</th><th>姓名</th><th>關卡</th><th>成績</th></tr>";
+        let h = "<table><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>";
         list.slice(0, 20).forEach((d, idx) => h += `<tr class="${idx<3?"top-rank":""}"><td>${idx+1}</td><td>${d.name}</td><td>${d.progress}</td><td><b>${d.total}s</b></td></tr>`);
-        openCustomDialog({ title: "🏆 排行榜 (最強紀錄)", contentHtml: h + "</table>" });
+        openCustomDialog({ title: "🏆 排行榜", contentHtml: h + "</table>" });
     }
 
     async function showAdmin() {
         const snapPlayers = await db.collection("players").get();
         const snapLeader = await db.collection("leaderboard").get();
-        
         let h = "<h3>👥 帳號管理</h3><table><tr><th>學號</th><th>姓名</th><th>密碼</th><th>操作</th></tr>";
         snapPlayers.forEach(doc => { if (doc.id !== ADMIN_ID) h += `<tr><td>${doc.id}</td><td>${doc.data().name}</td><td>${doc.data().password}</td><td><button onclick="deleteUser('${doc.id}')" style="color:red">刪除</button></td></tr>`; });
-        
-        h += "</table><div class='admin-section'><h3>🏆 排行榜紀錄管理</h3>";
-        h += "<button class='btn' style='background:var(--danger); color:white; width:auto; padding:8px 15px;' onclick='clearAllLeaderboard()'>🧨 全部清空排行榜</button>";
-        h += "<table><tr><th>學生</th><th>過關</th><th>秒數</th><th>操作</th></tr>";
-        snapLeader.forEach(doc => {
-            const d = doc.data();
-            h += `<tr><td>${d.name}</td><td>${d.progress}</td><td>${d.total}s</td><td><button onclick="deleteLeaderEntry('${doc.id}')" style="color:red">刪除</button></td></tr>`;
-        });
+        h += "</table><div class='admin-section'><h3>🏆 排行榜管理</h3><button class='btn' style='background:var(--danger); color:white; width:auto; padding:8px 15px;' onclick='clearAllLeaderboard()'>🧨 清空排行榜</button><table><tr><th>學生</th><th>過關</th><th>成績</th><th>操作</th></tr>";
+        snapLeader.forEach(doc => { const d = doc.data(); h += `<tr><td>${d.name}</td><td>${d.progress}</td><td>${d.total}s</td><td><button onclick="deleteLeaderEntry('${doc.id}')" style="color:red">刪除</button></td></tr>`; });
         h += "</table></div>";
-        
         openCustomDialog({ title: "⚙️ 管理後台", contentHtml: h });
     }
 
-    async function deleteUser(id) { if(confirm(`確定要刪除帳號 ${id} 嗎？此動作不可逆！`)) { await db.collection("players").doc(id).delete(); showAdmin(); } }
-    
-    async function deleteLeaderEntry(docId) {
-        if(confirm(`確定要刪除這筆排行榜紀錄嗎？`)) {
-            await db.collection("leaderboard").doc(docId).delete();
-            showAdmin();
-        }
-    }
-
-    async function clearAllLeaderboard() {
-        if(confirm("🚨 警告：確定要清空『所有』學生的排行榜紀錄嗎？")) {
-            if(confirm("最後一次確認：確定清空？")) {
-                const snap = await db.collection("leaderboard").get();
-                const batch = db.batch();
-                snap.forEach(doc => batch.delete(doc.ref));
-                await batch.commit();
-                alert("排行榜已全數清空。");
-                showAdmin();
-            }
-        }
-    }
-
+    async function deleteUser(id) { if(confirm(`確定刪除 ${id}？`)) { await db.collection("players").doc(id).delete(); showAdmin(); } }
+    async function deleteLeaderEntry(docId) { if(confirm(`刪除這筆紀錄？`)) { await db.collection("leaderboard").doc(docId).delete(); showAdmin(); } }
+    async function clearAllLeaderboard() { if(confirm("確定要清空排行榜嗎？")) { const snap = await db.collection("leaderboard").get(); const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit(); showAdmin(); } }
     async function updateRaceLeaderboard() { if (mode==='race') db.collection("leaderboard").doc(user.id).set({ id: user.id, name: user.name, total: rawSeconds + penaltySeconds, progress: (currentNum - 1), raw: rawSeconds, penalty: penaltySeconds, time: firebase.firestore.FieldValue.serverTimestamp() }); }
     
     function updateGame() {
@@ -355,13 +345,7 @@
         document.getElementById('animation-layer').appendChild(img);
         setTimeout(() => {
             img.style.left=(cX-100)+"px"; img.style.top=(cY-100)+"px"; img.style.opacity="0";
-            setTimeout(() => { 
-                document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); 
-                currentNum++; 
-                if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); 
-                else updateRaceLeaderboard(); 
-                updateGame(); 
-            }, 650);
+            setTimeout(() => { document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); else updateRaceLeaderboard(); updateGame(); }, 650);
         }, 50);
     }
 
@@ -370,8 +354,7 @@
         Object.keys(triangleData).forEach(id => {
             const pts = triangleData[id]; const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             poly.setAttribute("points", pts.map(p => `${p.x},${p.y * (707/750)}`).join(" ")); poly.setAttribute("class", "target-poly");
-            poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); };
-            layer.appendChild(poly);
+            poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); }; layer.appendChild(poly);
         });
     }
 
