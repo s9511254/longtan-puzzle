@@ -3,13 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>凌雲國中-龍潭大池拼圖</title>
+    <title>龍潭大池拼圖系統 V6.0 - 資源監控版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
-        :root { --primary: #00796b; --secondary: #00acc1; --accent: #ff5722; --danger: #e91e63; --dark: #263238; --gold: #ffc107; --info: #2196f3; }
+        :root { --primary: #00796b; --secondary: #00acc1; --accent: #ff5722; --danger: #e91e63; --dark: #263238; --gold: #ffc107; --info: #2196f3; --success: #4caf50; }
         body { font-family: "Microsoft JhengHei", sans-serif; background: #f0f4f8; margin: 0; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; width: 100vw; }
+        
+        /* 💡 下載進度條樣式 */
+        #loading-bar-container { width: 100%; height: 25px; background: #cfd8dc; position: relative; z-index: 11000; overflow: hidden; display: flex; align-items: center; }
+        #loading-bar-fill { height: 100%; width: 0%; background: var(--info); transition: width 0.3s; }
+        #loading-text { position: absolute; width: 100%; text-align: center; font-size: 12px; font-weight: bold; color: #263238; pointer-events: none; }
+
         #orientation-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark); color: white; z-index: 99999; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         @media screen and (orientation: portrait) { #orientation-overlay { display: flex; } }
         .phone-icon { width: 60px; height: 60px; margin-bottom: 10px; animation: rotate 2s infinite ease-in-out; }
@@ -34,7 +40,7 @@
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 20000; backdrop-filter: blur(4px); }
         .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 35px; border-radius: 24px; width: 500px; z-index: 20001; text-align: center; border: 6px solid var(--secondary); box-shadow: 0 10px 50px rgba(0,0,0,0.3); max-height: 90vh; overflow-y: auto; }
         #dialog-input { width: 85%; padding: 15px; font-size: 28px; text-align: center; border: 3px solid var(--secondary); border-radius: 12px; margin-bottom: 25px; text-transform: uppercase; }
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+        #login-overlay { position: fixed; top: 25px; left: 0; width: 100%; height: calc(100% - 25px); background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
         .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 400px; }
         #flash-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 200; pointer-events: none; }
         .flash-active { animation: flash-red 0.3s ease-in-out; }
@@ -51,6 +57,11 @@
 </head>
 <body>
 
+<div id="loading-bar-container">
+    <div id="loading-bar-fill"></div>
+    <div id="loading-text">🔍 正在優化系統資源... (0/73)</div>
+</div>
+
 <div id="orientation-overlay">
     <svg class="phone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" /><line x1="12" y1="18" x2="12" y2="18.01" /></svg>
     <h2>請旋轉螢幕</h2>
@@ -59,7 +70,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V6.0</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:12px; margin-bottom:15px; text-align:center;">
             <button class="btn" style="background:var(--primary); color:white;" onclick="checkID()">下一步</button>
@@ -87,7 +98,7 @@
 <div id="victory-modal" class="victory-card">
     <h1 style="color:var(--gold); font-size:52px; margin:0;">WINNER!</h1>
     <div style="font-size:80px; font-weight:bold; color:var(--primary); margin:20px 0;"><span id="final-total-score">0</span>s</div>
-    <button class="btn" style="background:var(--gold); color:black; font-size:20px;" onclick="backToModeSelect()">太棒了，返回模式選擇</button>
+    <button class="btn" style="background:var(--gold); color:black; font-size:20px;" onclick="backToModeSelect()">返回模式選擇</button>
 </div>
 
 <div class="header" onclick="handleDevClick()"><h1>🧩 龍潭大池全等三角形拼圖</h1></div>
@@ -149,19 +160,45 @@
 </div>
 
 <script>
-    // 💡 V5.9 閃電加載技術：圖片預載入腳本
+    // 💡 資源監控邏輯
+    let loadedCount = 0;
+    const totalToLoad = 73; // 36片 + 37張背景(00~36)
+    
+    const updateLoadingBar = () => {
+        loadedCount++;
+        const percent = Math.floor((loadedCount / totalToLoad) * 100);
+        document.getElementById('loading-bar-fill').style.width = percent + "%";
+        document.getElementById('loading-text').innerText = `⚡ 正在同步雲端資源... (${loadedCount}/${totalToLoad})`;
+        
+        if (loadedCount >= totalToLoad) {
+            document.getElementById('loading-bar-fill').style.background = "var(--success)";
+            document.getElementById('loading-text').innerText = "✅ 全數資源已就緒，體驗最佳流暢度！";
+            setTimeout(() => {
+                document.getElementById('loading-bar-container').style.height = "5px"; // 下載完畢後縮小進度條
+                document.getElementById('loading-text').innerText = "";
+            }, 2000);
+        }
+    };
+
     const preloadResources = () => {
-        console.log("⚡ 啟動閃電加載：背景與拼塊預載入中...");
-        for (let i = 0; i <= 36; i++) {
+        // 先載入預設背景
+        const bg0 = new Image();
+        bg0.src = "bg00.jpg";
+        bg0.onload = updateLoadingBar;
+        bg0.onerror = updateLoadingBar;
+
+        for (let i = 1; i <= 36; i++) {
             const id = i.toString().padStart(2, '0');
-            // 預載拼塊圖片
-            if (i > 0) {
-                const pImg = new Image();
-                pImg.src = `piece${id}.png`;
-            }
-            // 預載背景地圖
+            // 預載拼塊
+            const pImg = new Image();
+            pImg.src = `piece${id}.png`;
+            pImg.onload = updateLoadingBar;
+            pImg.onerror = updateLoadingBar;
+            // 預載背景
             const bImg = new Image();
             bImg.src = `bg${id}.jpg`;
+            bImg.onload = updateLoadingBar;
+            bImg.onerror = updateLoadingBar;
         }
     };
     window.addEventListener('load', preloadResources);
@@ -330,7 +367,7 @@
             document.getElementById('final-total-score').innerText = total;
             document.getElementById('modal-overlay').style.display = 'block'; document.getElementById('victory-modal').style.display = 'block';
             confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 40000 });
-        } else { alert("恭喜完成挑戰！"); backToModeSelect(); }
+        } else { alert("挑戰完成！"); backToModeSelect(); }
     }
 
     async function showRank() {
