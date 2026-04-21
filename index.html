@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V5.8 - 狀態修復版</title>
+    <title>龍潭大池拼圖系統 V5.9 - 閃電加載版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -59,7 +59,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V5.8</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖系統 V5.9</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:12px; margin-bottom:15px; text-align:center;">
             <button class="btn" style="background:var(--primary); color:white;" onclick="checkID()">下一步</button>
@@ -149,11 +149,28 @@
 </div>
 
 <script>
+    // 💡 V5.9 閃電加載技術：圖片預載入腳本
+    const preloadResources = () => {
+        console.log("⚡ 啟動閃電加載：背景與拼塊預載入中...");
+        for (let i = 0; i <= 36; i++) {
+            const id = i.toString().padStart(2, '0');
+            // 預載拼塊圖片
+            if (i > 0) {
+                const pImg = new Image();
+                pImg.src = `piece${id}.png`;
+            }
+            // 預載背景地圖
+            const bImg = new Image();
+            bImg.src = `bg${id}.jpg`;
+        }
+    };
+    window.addEventListener('load', preloadResources);
+
     const firebaseConfig = { apiKey: "AIzaSyAxd1n_6-4KUDALQztN2_8cusSljWxq9mo", authDomain: "longtan-puzzle-system.firebaseapp.com", projectId: "longtan-puzzle-system", storageBucket: "longtan-puzzle-system.firebasestorage.app", messagingSenderId: "634507608403", appId: "1:634507608403:web:1c64d268316847004be1a6" };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    let user = null, mode = '', currentNum = 1; // 💡 mode 預設為空
+    let user = null, mode = '', currentNum = 1;
     let raceTimer = null, startTime = 0, rawSeconds = 0, penaltySeconds = 0;
     let devClicks = 0;
     const ADMIN_ID = "9999999", ADMIN_PWD = "ji3g4xl3g ";
@@ -239,12 +256,11 @@
     }
 
     async function startGame(m) {
-        mode = m; // 💡 設定當前模式
+        mode = m; 
         if (!user) { location.reload(); return; }
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('user-info').innerText = `👤 ${user.name}`;
         
-        // 💡 確保狀態乾淨：根據模式顯示 UI
         if (mode === 'race') { 
             document.getElementById('race-start-overlay').style.display = 'flex'; 
             document.getElementById('race-stats').style.display = 'block'; 
@@ -271,15 +287,12 @@
     }
 
     function initGame() { restoreProgress(currentNum); initAllSensors(); updateGame(); handleResize(); }
-    
-    // 💡 修正返回首頁邏輯，徹底重置狀態
     function backToModeSelect() { 
         if(raceTimer) { clearInterval(raceTimer); raceTimer = null; } 
-        mode = ''; // 💡 重設模式
-        penaltySeconds = 0; rawSeconds = 0; 
+        mode = ''; penaltySeconds = 0; rawSeconds = 0; 
         closeModal();
         document.getElementById('victory-modal').style.display = 'none'; 
-        document.getElementById('race-start-overlay').style.display = 'none'; // 💡 強制隱藏遮罩
+        document.getElementById('race-start-overlay').style.display = 'none';
         document.getElementById('modal-overlay').style.display = 'none'; 
         document.getElementById('login-overlay').style.display = 'flex'; 
         document.getElementById('step-mode').style.display = 'block'; 
@@ -342,7 +355,7 @@
                 </td></tr>`;
             }
         });
-        h += "</table><div class='admin-section'><h3>🏆 排行榜管理</h3><button class='btn' style='background:var(--danger); color:white; width:auto; padding:8px 15px;' onclick='clearAllLeaderboard()'>🧨 清空排行榜</button><table><tr><th>學生</th><th>成績</th><th>操作</th></tr>";
+        h += "</table><div class='admin-section'><h3>🏆 排行榜管理</h3><button class='btn' style='background:var(--danger); color:white; width:auto; padding:8px 15px;' onclick='clearAllLeaderboard()'>🧨 清空排行榜</button><table><tr><th>學生</th><th>過關</th><th>成績</th><th>操作</th></tr>";
         snapLeader.forEach(doc => { const d = doc.data(); h += `<tr><td>${d.name}</td><td>${d.progress}</td><td>${d.total}s</td><td><button class="admin-btn-sm" style="background:var(--danger);" onclick="deleteLeaderEntry('${doc.id}')">刪除</button></td></tr>`; });
         h += "</table></div>";
         openCustomDialog({ title: "⚙️ 管理後台", contentHtml: h });
