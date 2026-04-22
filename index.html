@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V8.1 - 研習終極版</title>
+    <title>龍潭大池拼圖系統 V8.2 - 公平競賽版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -52,8 +52,8 @@
         .admin-tab-btn { padding: 10px 20px; border: none; background: #eee; cursor: pointer; border-radius: 10px 10px 0 0; font-weight: bold; }
         .admin-tab-btn.active { background: var(--secondary); color: white; }
         .admin-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .admin-table th { background: #f8f9fa; padding: 12px; border-bottom: 2px solid #dee2e6; }
-        .admin-table td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; }
+        .admin-table th { background: #f8f9fa; padding: 12px; border-bottom: 2px solid #dee2e6; font-size: 14px; }
+        .admin-table td { padding: 10px; border-bottom: 1px solid #eee; text-align: center; font-size: 14px; }
         @media screen and (max-width: 1100px) { #main-container { flex-direction: column; } #mission-panel { width: 95%; height: auto; order: -1; } }
     </style>
 </head>
@@ -64,7 +64,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.1</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.2</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="請輸入學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;">
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -152,7 +152,7 @@
 
             <button class="btn" style="background:var(--gold);" onclick="showRank()">🏆 全校排行榜</button>
             <button class="btn" style="background:#9e9e9e; color:white;" onclick="confirmRestartGame()">🔄 重新開始</button>
-            <button class="btn" style="background:var(--danger); color:white;" onclick="backToModeSelect()">🏠 返回首頁</button>
+            <button class="btn" style="background:var(--danger); color:white;" onclick="backToModeSelect()">🏠 返回模式選擇</button>
             <button id="admin-side-btn" class="btn" style="display:none; background:#3f51b5; color:white;" onclick="showAdmin()">⚙️ 管理後台</button>
         </div>
 
@@ -195,7 +195,7 @@
     const SPEED_RANKS = [{t:200,n:"永恆傳說 ♾️"},{t:300,n:"極致傳說 💠"},{t:400,n:"神聖傳說 🌌"},{t:500,n:"無雙傳說 🐉"},{t:600,n:"最強傳說 II 🔱✨"},{t:700,n:"最強傳說 🔱"},{t:800,n:"戰場傳說 III 👑🔥"},{t:900,n:"戰場傳說 II 👑✨"},{t:1000,n:"戰場傳說 👑"},{t:1100,n:"至尊星耀 🌟"},{t:1200,n:"永恆鑽石 💎"},{t:1300,n:"堅韌鉑金 🟦"},{t:1400,n:"英勇黃金 🟨"},{t:1500,n:"秩序白銀 ⬜"},{t:9999,n:"基石青銅 🟫"}];
     const POS_RANKS = ["萬物歸位者 📍","絕對領域者 📍","幾何狙擊手 📍","疾風神射手 📍","視覺導航員 📍","形狀觀察員 📍","幾何初學者 📍","尚未獲得"];
     const PROP_RANKS = ["邏輯真理神 🧪","幾何賢者 🧪","邏輯執行官 🧪","幾何策士 🧪","推理分析師 🧪","邏輯小尖兵 🧪","性質實習生 🧪","尚未獲得"];
-    const WILL_RANKS = ["龍潭守護神獸 🐉","恆星發光體 ☀️","榮耀守門人 🏯","幾何朝聖者 💎","狂熱鍛造家 🔥","磐石守護衛 ⛰️","堅毅求道者 📜","大池常駐師 🌲","晨曦修行者 🌿","幾何小幼苗 🌱"];
+    const WILL_RANKS = ["龍潭守護神獸 🐉","恆星發光體 ☀️","榮耀守門人 🏯","幾何朝聖者 💎","狂熱鍛造家 🔥","磐石守護衛 ⛰️","堅毅求道者 📜","大池常駐師 🌲","晨曦修行者 🌿","幾幾何小幼苗 🌱"];
 
     function switchTab(t) {
         document.querySelectorAll('.tab-btn, .tab-content').forEach(e=>e.classList.remove('active'));
@@ -208,34 +208,23 @@
         if(!id) return;
         const doc = await db.collection("players").doc(id).get(); 
         document.getElementById('step-id').style.display = 'none'; 
-        if (doc.exists) { 
-            user = { id, ...doc.data() }; 
-            document.getElementById('greet-user').innerText = `你好，${user.name}！`; 
-            document.getElementById('step-pwd').style.display = 'block'; 
-        } else { 
-            document.getElementById('step-reg').style.display = 'block'; 
-        } 
+        if (doc.exists) { user = { id, ...doc.data() }; document.getElementById('greet-user').innerText = `你好，${user.name}！`; document.getElementById('step-pwd').style.display = 'block'; } 
+        else { document.getElementById('step-reg').style.display = 'block'; } 
     }
 
     async function handleLogin() {
         const pwd = document.getElementById('login-pwd').value;
         if ((user.id === ADMIN_ID && pwd === ADMIN_PWD) || pwd === user.password) {
-            // 💡 修正初始化權限：只有教師能看到工具
             if (user.id === ADMIN_ID) { 
                 document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='block');
                 user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; user.neverGiveUp = true;
             } else {
                 document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='none');
             }
-            
-            // 💡 強制重置所有 UI 狀態，解決畫面跑掉的問題
             document.getElementById('step-id').style.display = 'none';
             document.getElementById('step-pwd').style.display = 'none';
-            document.getElementById('step-reg').style.display = 'none';
             document.getElementById('step-mode').style.display = 'block'; 
-            document.getElementById('victory-modal').style.display = 'none';
             document.getElementById('main-container').style.display = 'none';
-            
             sessionStart = Date.now(); refreshHonorUI();
             startSessionMonitor();
         } else alert("密碼錯誤");
@@ -260,31 +249,24 @@
         const bestTime = user.bestRaceTime || 9999;
         const sRank = SPEED_RANKS.find(r => bestTime <= r.t) || SPEED_RANKS[SPEED_RANKS.length-1];
         document.getElementById('rank-speed').innerText = sRank.n;
-        
         const speedWall = document.getElementById('medal-speed-wall'); speedWall.innerHTML = "";
         SPEED_RANKS.slice(0, -1).reverse().forEach(r => {
             const m = document.createElement('div'); m.className = `medal-icon ${bestTime <= r.t ? 'medal-active' : ''}`;
             m.innerText = r.n.split(' ').pop(); m.title = `${r.n} (${r.t}秒內)`; speedWall.appendChild(m);
         });
-
         const pIdx = (user.bestPosErr === undefined) ? 7 : Math.min(6, Math.floor(user.bestPosErr / 3));
         const lIdx = (user.bestPropErr === undefined) ? 7 : Math.min(6, Math.floor(user.bestPropErr / 3));
         document.getElementById('rank-pos').innerText = POS_RANKS[pIdx];
         document.getElementById('rank-prop').innerText = PROP_RANKS[lIdx];
-
         const wCount = user.willCount || 0;
         document.getElementById('rank-will').innerText = `修行 ${wCount} 次 / ${wCount >= 5 ? WILL_RANKS[9-Math.floor(wCount/5)]||'龍潭守護神' : '新晉拼圖員'}`;
-        
         const specWall = document.getElementById('medal-special-wall'); specWall.innerHTML = "";
         WILL_RANKS.slice().reverse().forEach((name, i) => {
             const target = (i + 1) * 5;
             const m = document.createElement('div'); m.className = `medal-icon ${wCount >= target ? 'medal-active' : ''}`;
-            m.innerText = name.split(' ').pop(); m.title = `${name} (修行滿 ${target} 次)`; specWall.appendChild(m);
+            m.innerText = name.split(' ').pop(); m.title = `${name} (滿 ${target} 次)`; specWall.appendChild(m);
         });
-        if (user.neverGiveUp) { 
-            const m = document.createElement('div'); m.className = "medal-icon medal-active never-give-up"; m.innerText = "🛡️"; 
-            m.title = "隱藏勳章：永不言棄"; specWall.appendChild(m); 
-        }
+        if (user.neverGiveUp) { const m = document.createElement('div'); m.className = "medal-icon medal-active never-give-up"; m.innerText = "🛡️"; m.title = "永不言棄"; specWall.appendChild(m); }
     }
 
     async function startGame(m) {
@@ -292,7 +274,6 @@
         document.getElementById('login-overlay').style.display = 'none';
         document.getElementById('main-container').style.display = 'flex';
         document.getElementById('jump-control').style.display = (mode === 'practice' || user.id === ADMIN_ID) ? 'block' : 'none';
-        
         if (mode === 'race') {
             document.getElementById('race-start-overlay').style.display = 'flex';
             document.getElementById('race-stats').style.display = 'block';
@@ -303,8 +284,7 @@
             const doc = await db.collection("players").doc(user.id).get();
             currentNum = (doc.exists && doc.data().progress <= 36) ? doc.data().progress : 1;
         }
-        initGame(); // 💡 強制刷新偵測層與拼圖區
-        switchTab('task'); // 預設任務頁
+        initGame(); switchTab('task');
     }
 
     function beginRaceNow() {
@@ -325,8 +305,7 @@
     function processPlacement(tId) {
         if (tId === currentNum.toString().padStart(2, '0')) {
             openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
-            const btns = document.getElementById('dialog-btns');
-            btns.innerHTML = "";
+            const btns = document.getElementById('dialog-btns'); btns.innerHTML = "";
             ["SSS","SAS","ASA","AAS","RHS"].forEach(ans => {
                 const b = document.createElement('button'); b.className = "btn"; b.style.width="auto"; b.innerText = ans;
                 b.onclick = () => {
@@ -348,6 +327,7 @@
             if (user.bestPropErr === undefined || currentPropErr < user.bestPropErr) updates.bestPropErr = currentPropErr;
             if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true;
             await db.collection("players").doc(user.id).update(updates);
+            // 💡 這裡同步更新 leaderboard 以便排序：存入目前最大的關卡(36)
             await db.collection("leaderboard").doc(user.id).set({ id: user.id, name: user.name, total, progress: 36, time: firebase.firestore.FieldValue.serverTimestamp() });
             Object.assign(user, updates); refreshHonorUI();
             document.getElementById('final-total-score').innerText = total; document.getElementById('victory-modal').style.display = 'block';
@@ -370,8 +350,17 @@
         content.style.display = 'none'; btns.innerHTML = `<button class="btn" style="background:#ccc" onclick="closeModal()">關閉</button>`;
         modal.style.display = 'block'; dialog.style.display = 'block';
     }
-    function triggerErrorFlash(sec, msg) { if (mode === 'race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
+    function triggerErrorFlash(sec, msg) { if (mode === 'race') { penaltySeconds += sec; updateRaceLeaderboard(); } const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
     
+    // 💡 修正：競賽中途更新 leaderboard 數據
+    async function updateRaceLeaderboard() {
+        if (mode === 'race' && user) {
+            await db.collection("leaderboard").doc(user.id).set({
+                id: user.id, name: user.name, total: rawSeconds + penaltySeconds, progress: currentNum - 1, time: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    }
+
     function backToModeSelect() {
         if(raceTimer) clearInterval(raceTimer);
         document.getElementById('main-container').style.display = 'none';
@@ -404,19 +393,26 @@
         document.getElementById('animation-layer').appendChild(img); 
         setTimeout(() => { 
             img.style.left=(cX-100)+"px"; img.style.top=(cY-100)+"px"; img.style.opacity="0"; 
-            setTimeout(() => { document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); updateGame(); }, 650); 
+            setTimeout(() => { document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; 
+            if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); 
+            else updateRaceLeaderboard();
+            updateGame(); }, 650); 
         }, 50); 
     }
     function addPermanentGlaze(id) { const pts = triangleData[id]; if(!pts) return; const g = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); g.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" ")); g.setAttribute("class", "liquid-glass-polygon"); document.getElementById('placed-polygons').appendChild(g); }
     function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
     async function handleRegister() { const id = document.getElementById('login-id').value.trim(), name = document.getElementById('reg-name').value.trim(), pwd = document.getElementById('reg-pwd').value.trim(); if(!name || pwd.length<8) return alert("資料不全"); await db.collection("players").doc(id).set({ name, password: pwd, progress: 1, willCount: 0 }); location.reload(); }
     
+    // 💡 修正：排行榜排序邏輯 (先比 Progress 降序，再比 Total 升序)
     async function showRank() { 
         const snap = await db.collection("leaderboard").get(); 
         let list = []; snap.forEach(doc => list.push(doc.data())); 
-        list.sort((a, b) => a.total - b.total); 
-        let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>成績</th></tr>"; 
-        list.slice(0, 50).forEach((d, idx) => h += `<tr><td>${idx+1}</td><td>${d.name}</td><td><b>${d.total}s</b></td></tr>`); 
+        list.sort((a, b) => {
+            if (b.progress !== a.progress) return b.progress - a.progress; // 關卡多的排前面
+            return a.total - b.total; // 關卡同則秒數少的排前面
+        }); 
+        let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; 
+        list.slice(0, 50).forEach((d, idx) => h += `<tr><td>${idx+1}</td><td>${d.name}</td><td>${d.progress} 關</td><td><b>${d.total}s</b></td></tr>`); 
         openCustomDialog({ title: "🏆 全校排行榜" });
         const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>";
     }
@@ -427,14 +423,12 @@
         let players = [], errors = {};
         snapPlayers.forEach(d => players.push({id: d.id, ...d.data()}));
         snapErrors.forEach(d => { const q = d.data().questionId; errors[q] = (errors[q]||0)+1; });
-
         const renderAdminTab = (tab) => {
             let h = `<div class="admin-tabs">
                 <button class="admin-tab-btn ${tab==='user'?'active':''}" onclick="renderAdminTab('user')">👤 帳號管理</button>
                 <button class="admin-tab-btn ${tab==='data'?'active':''}" onclick="renderAdminTab('data')">📊 學習數據</button>
                 <button class="admin-tab-btn ${tab==='diag'?'active':''}" onclick="renderAdminTab('diag')">🧠 錯題診斷</button>
             </div><div style="max-height:400px; overflow-y:auto;">`;
-            
             if(tab==='user'){
                 h += `<table class="admin-table"><tr><th>學號</th><th>姓名</th><th>密碼</th><th>操作</th></tr>`;
                 players.forEach(p => { if(p.id!==ADMIN_ID) h += `<tr><td>${p.id}</td><td>${p.name}</td><td>${p.password}</td><td><button onclick="deleteUser('${p.id}')" style="color:red; cursor:pointer;">刪除</button></td></tr>`; });
@@ -457,10 +451,10 @@
     }
 
     async function deleteUser(id) { if(confirm("確定永久刪除此帳號？")) { await db.collection("players").doc(id).delete(); showAdmin(); } }
-    function handleDevClick() { if (!user || user.id !== ADMIN_ID) return; devClicks++; if (devClicks >= 5) { const t = prompt("跳關:", currentNum); if (t >= 1 && t <= 36) { currentNum = parseInt(t); initGame(); } devClicks = 0; } }
+    function handleDevClick() { if (!user || user.id !== ADMIN_ID) return; devClicks++; if (devClicks >= 5) { const t = prompt("跳關 (1-36):", currentNum); if (t >= 1 && t <= 36) { currentNum = parseInt(t); initGame(); } devClicks = 0; } }
 
-    const answers = {"01":["ASA"],"02":["ASA","AAS"],"03":["SAS","SSS"],"04":["RHS","AAS","ASA"],"05":["SAS"],"06":["ASA","SAS","SSS","AAS"],"07":["SAS"],"08":["SSS"],"09":["ASA","SAS","AAS"],"10":["AAS"],"11":["SSS"],"12":["ASA","AAS","SAS"],"13":["ASA","AAS"],"14":["SAS","SSS","ASA"],"15":["ASA","SAS","AAS"],"16":["ASA"],"17":["ASA"],"18":["ASA","AAS"],"19":["ASA","AAS"],"20":["ASA"],"21":["SSS","SAS","RHS","AAS","ASA"],"22":["ASA","AAS"],"23":["ASA","AAS"],"24":["SAS"],"25":["SSS"],"26":["ASA"],"27":["AAS","SAS"],"28":["AAS"],"29":["SAS","ASA"],"30":["ASA"],"31":["ASA"],"32":["RHS"],"33":["ASA","AAS"],"34":["AAS"],"35":["SAS"],"36":["AAS","ASA"]};
     const triangleData = {"10":[{"x":623,"y":371},{"x":683,"y":248},{"x":850,"y":357}],"11":[{"x":539,"y":546},{"x":619,"y":379},{"x":718,"y":540}],"12":[{"x":668,"y":448},{"x":926,"y":505},{"x":771,"y":615}],"13":[{"x":384,"y":450},{"x":593,"y":419},{"x":533,"y":546}],"14":[{"x":380,"y":453},{"x":526,"y":550},{"x":373,"y":642}],"15":[{"x":245,"y":362},{"x":372,"y":449},{"x":302,"y":550}],"16":[{"x":56,"y":263},{"x":163,"y":482},{"x":51,"y":671}],"17":[{"x":61,"y":256},{"x":435,"y":36},{"x":278,"y":221}],"18":[{"x":240,"y":367},{"x":298,"y":551},{"x":140,"y":531}],"19":[{"x":690,"y":244},{"x":956,"y":178},{"x":857,"y":355}],"20":[{"x":861,"y":360},{"x":960,"y":184},{"x":930,"y":495}],"21":[{"x":321,"y":228},{"x":373,"y":442},{"x":245,"y":357}],"22":[{"x":536,"y":553},{"x":712,"y":544},{"x":557,"y":699}],"23":[{"x":290,"y":578},{"x":374,"y":457},{"x":367,"y":639}],"24":[{"x":624,"y":376},{"x":734,"y":370},{"x":664,"y":440}],"25":[{"x":746,"y":368},{"x":856,"y":362},{"x":842,"y":478}],"26":[{"x":641,"y":77},{"x":878,"y":40},{"x":747,"y":196}],"27":[{"x":377,"y":647},{"x":531,"y":555},{"x":552,"y":704}],"28":[{"x":141,"y":538},{"x":296,"y":558},{"x":195,"y":701}],"29":[{"x":742,"y":369},{"x":836,"y":481},{"x":668,"y":444}],"30":[{"x":136,"y":539},{"x":187,"y":702},{"x":55,"y":677}],"31":[{"x":860,"y":367},{"x":925,"y":500},{"x":848,"y":482}],"32":[{"x":286,"y":583},{"x":365,"y":644},{"x":199,"y":703}],"33":[{"x":751,"y":199},{"x":879,"y":46},{"x":830,"y":203}],"34":[{"x":886,"y":42},{"x":957,"y":171},{"x":836,"y":202}],"35":[{"x":723,"y":544},{"x":784,"y":647},{"x":564,"y":701}],"36":[{"x":58,"y":259},{"x":317,"y":222},{"x":167,"y":477}],"01":[{"x":493,"y":195},{"x":815,"y":207},{"x":490,"y":287}],"02":[{"x":492,"y":292},{"x":676,"y":248},{"x":598,"y":411}],"03":[{"x":491,"y":297},{"x":593,"y":413},{"x":509,"y":426}],"04":[{"x":383,"y":444},{"x":488,"y":297},{"x":504,"y":426}],"05":[{"x":327,"y":224},{"x":485,"y":291},{"x":378,"y":442}],"06":[{"x":331,"y":220},{"x":489,"y":196},{"x":487,"y":287}],"07":[{"x":494,"y":193},{"x":634,"y":77},{"x":742,"y":199}],"08":[{"x":444,"y":35},{"x":626,"y":77},{"x":493,"y":190}],"09":[{"x":442,"y":35},{"x":488,"y":192},{"x":283,"y":221}]};
+    const answers = {"01":["ASA"],"02":["ASA","AAS"],"03":["SAS","SSS"],"04":["RHS","AAS","ASA"],"05":["SAS"],"06":["ASA","SAS","SSS","AAS"],"07":["SAS"],"08":["SSS"],"09":["ASA","SAS","AAS"],"10":["AAS"],"11":["SSS"],"12":["ASA","AAS","SAS"],"13":["ASA","AAS"],"14":["SAS","SSS","ASA"],"15":["ASA","SAS","AAS"],"16":["ASA"],"17":["ASA"],"18":["ASA","AAS"],"19":["ASA","AAS"],"20":["ASA"],"21":["SSS","SAS","RHS","AAS","ASA"],"22":["ASA","AAS"],"23":["ASA","AAS"],"24":["SAS"],"25":["SSS"],"26":["ASA"],"27":["AAS","SAS"],"28":["AAS"],"29":["SAS","ASA"],"30":["ASA"],"31":["ASA"],"32":["RHS"],"33":["ASA","AAS"],"34":["AAS"],"35":["SAS"],"36":["AAS","ASA"]};
 </script>
 </body>
 </html>
