@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V8.4 - 教學實戰診斷版</title>
+    <title>龍潭大池拼圖系統 V8.5 - 原地縮放修復版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -26,18 +26,19 @@
         .start-btn { padding: 25px 80px; font-size: 42px; background: var(--accent); color: white; border: none; border-radius: 60px; cursor: pointer; font-weight: bold; box-shadow: 0 0 30px var(--accent); animation: breathe 2s infinite ease-in-out; }
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         
-        /* 側邊面板 */
-        #mission-panel { width: 340px; background: #fff; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0; overflow: hidden; display: flex; flex-direction: column; height: 707px; }
-        .tab-header { display: flex; background: #f5f5f5; border-bottom: 1px solid #ddd; }
+        /* 側邊面板：取消 overflow:hidden 讓圖片可以飄出來 */
+        #mission-panel { width: 340px; background: #fff; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0; display: flex; flex-direction: column; height: 707px; position: relative; }
+        .tab-header { display: flex; background: #f5f5f5; border-bottom: 1px solid #ddd; border-radius: 20px 20px 0 0; overflow: hidden; }
         .tab-btn { flex: 1; padding: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; color: #666; transition: 0.3s; background: transparent; }
         .tab-btn.active { background: white; color: var(--primary); border-top: 4px solid var(--primary); }
-        .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; }
+        .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; position: relative; }
         .tab-content.active { display: block; }
         
-        /* 💡 V8.4 拼圖預覽與超視距放大 */
-        .current-piece-box { width: 100%; height: 210px; margin: 10px 0; border: 3px solid var(--accent); border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; position: relative; }
-        #active-box-img { max-width: 190px; max-height: 190px; transition: 0.2s ease; cursor: zoom-in; }
-        #active-box-img.zoomed { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(var(--zoom-scale, 2.5)); z-index: 50000; background: white; box-shadow: 0 0 100px rgba(0,0,0,0.5); border: 2px solid #fff; border-radius: 10px; pointer-events: none; }
+        /* 💡 V8.5 原地縮放與打破邊界邏輯 */
+        .current-piece-box { width: 100%; height: 210px; margin: 10px 0; border: 3px solid var(--accent); border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; position: relative; cursor: zoom-in; }
+        #active-box-img { max-width: 190px; max-height: 190px; transition: transform 0.2s ease; transform-origin: center center; z-index: 10; pointer-events: none; }
+        /* 當滑鼠移入外框時，圖片放大並往左偏移，避免被螢幕邊緣切掉，同時 z-index 頂天 */
+        .current-piece-box:hover #active-box-img { transform: scale(var(--zoom-scale, 2.5)) translateX(-20%); z-index: 9999; }
 
         .achievement-card { background: #f9f9f9; border-radius: 12px; padding: 10px; margin: 8px 0; border-left: 5px solid var(--secondary); font-size: 13px; }
         .rank-badge { font-size: 18px; font-weight: bold; display: block; margin-top: 3px; color: var(--dark); }
@@ -68,11 +69,11 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.4</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.5</h2>
         <div id="step-id"><input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button></div>
         <div id="step-pwd" style="display:none;"><p id="greet-user" style="font-weight:bold;"></p><input type="password" id="login-pwd" placeholder="密碼" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleLogin()">進入系統</button></div>
         <div id="step-reg" style="display:none;"><p style="color:var(--danger); font-weight:bold;">註冊新帳號</p><input type="text" id="reg-name" placeholder="姓名" style="width:85%; padding:12px; margin-bottom:10px; text-align:center; border:2px solid #ddd; border-radius:10px;"><input type="password" id="reg-pwd" placeholder="密碼(至少8碼)" style="width:85%; padding:12px; margin-bottom:15px; text-align:center; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleRegister()">完成註冊</button></div>
-        <div id="step-mode" style="display:none;"><h3>模式選擇</h3><button class="btn" style="padding:18px; font-size:20px; background:white; border:3px solid var(--secondary); margin-bottom:15px; color:var(--secondary);" onclick="startGame('practice')">🏋️ 練習模式</button><button class="btn" style="padding:18px; font-size:20px; background:white; border:3px solid var(--secondary); margin-bottom:15px; color:var(--secondary);" onclick="startGame('race')">🏆 競賽模式</button><button id="admin-main-btn" class="btn" style="display:none; background:#3f51b5; color:white;" onclick="showAdmin()">⚙️ 管理後台</button></div>
+        <div id="step-mode" style="display:none;"><h3>模式選擇</h3><button class="btn" style="padding:18px; font-size:20px; background:white; border:3px solid var(--secondary); margin-bottom:15px; color:var(--secondary);" onclick="startGame('practice')">🏋️ 練習模式</button><button class="btn" style="padding:18px; font-size:20px; background:white; border:3px solid var(--secondary); margin-bottom:15px; color:var(--secondary);" onclick="startGame('race')">🏆 競賽模式</button><button id="admin-main-btn" class="btn" style="display:none; background:#3f51b5; color:white; padding:15px;" onclick="showAdmin()">⚙️ 管理後台</button></div>
     </div>
 </div>
 
@@ -117,12 +118,16 @@
                 <p style="margin:0 0 5px 0; font-size:12px; color:#558b2f;">⏭️ 跳轉關卡 (1-36):</p>
                 <div style="display:flex; gap:5px;"><input type="number" id="jump-num" min="1" max="36" style="flex:1; border-radius:5px; border:1px solid #999; text-align:center;"><button onclick="handleJump()" style="padding:2px 10px; background:#558b2f; color:white; border:none; border-radius:5px; cursor:pointer;">跳轉</button></div>
             </div>
-            <div id="active-box" class="current-piece-box"><img id="active-box-img" src="" onmouseenter="pieceEnter()" onmouseleave="pieceLeave()" onwheel="pieceWheel(event)"></div>
+            
+            <div id="active-box" class="current-piece-box" onwheel="pieceWheel(event)">
+                <img id="active-box-img" src="">
+            </div>
+            
             <div id="race-stats" style="display:none; background:#fff3e0; padding:10px; border-radius:10px; color:#e65100; font-size:14px; margin-bottom:10px;">⏱️ 用時：<span id="stat-time">00:00</span> (+<span id="stat-penalty">0</span>s)<br>❌ 點錯：<span id="stat-pos-err">0</span> | 判錯：<span id="stat-prop-err">0</span></div>
             <div id="teacher-tools" class="toggle-switch" style="display:none;"><span>👁️ 顯示答案位置</span><input type="checkbox" id="ans-toggle" style="width:20px; height:20px; cursor:pointer;"></div>
-            <button class="btn" style="background:var(--gold);" onclick="showRank()">🏆 全校排行榜</button>
+            <button class="btn" style="background:var(--gold);" onclick="showRank()">🏆 排行榜</button>
             <button class="btn" style="background:#9e9e9e; color:white;" onclick="confirmRestartGame()">🔄 重新開始</button>
-            <button class="btn" style="background:var(--danger); color:white;" onclick="backToModeSelect()">🏠 返回首頁</button>
+            <button class="btn" style="background:var(--danger); color:white;" onclick="backToModeSelect()">🏠 返回模式選擇</button>
             <button id="admin-side-btn" class="btn" style="display:none; background:#3f51b5; color:white;" onclick="showAdmin()">⚙️ 管理後台</button>
         </div>
         <div id="tab-honor" class="tab-content">
@@ -153,12 +158,12 @@
     const WILL_RANKS = ["龍潭守護神獸 🐉","恆星發光體 ☀️","榮耀守門人 🏯","幾何朝聖者 💎","狂熱鍛造家 🔥","磐石守護衛 ⛰️","堅毅求道者 📜","大池常駐師 🌲","晨曦修行者 🌿","幾何小幼苗 🌱"];
 
     function switchTab(t) { document.querySelectorAll('.tab-btn, .tab-content').forEach(e=>e.classList.remove('active')); document.getElementById(`btn-${t}`).classList.add('active'); document.getElementById(`tab-${t}`).classList.add('active'); }
-    async function checkID() { const id = document.getElementById('login-id').value.trim(); const doc = await db.collection("players").doc(id).get(); document.getElementById('step-id').style.display = 'none'; if (doc.exists) { user = { id, ...doc.data() }; document.getElementById('greet-user').innerText = `你好，${user.name}！`; document.getElementById('step-pwd').style.display = 'block'; } else { document.getElementById('step-reg').style.display = 'block'; } }
+    async function checkID() { const id = document.getElementById('login-id').value.trim(); if(!id) return; const doc = await db.collection("players").doc(id).get(); document.getElementById('step-id').style.display = 'none'; if (doc.exists) { user = { id, ...doc.data() }; document.getElementById('greet-user').innerText = `你好，${user.name}！`; document.getElementById('step-pwd').style.display = 'block'; } else { document.getElementById('step-reg').style.display = 'block'; } }
     async function handleLogin() {
         const pwd = document.getElementById('login-pwd').value;
         if ((user.id === ADMIN_ID && pwd === ADMIN_PWD) || pwd === user.password) {
             if (user.id === ADMIN_ID) { document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='block'); user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; user.neverGiveUp = true; }
-            document.getElementById('step-pwd').style.display = 'none'; document.getElementById('step-mode').style.display = 'block'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('main-container').style.display = 'none';
+            document.getElementById('step-pwd').style.display = 'none'; document.getElementById('step-mode').style.display = 'block'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('main-container').style.display = 'none';
             sessionStart = Date.now(); refreshHonorUI(); startSessionMonitor();
         } else alert("密碼錯誤");
     }
@@ -175,14 +180,12 @@
         document.getElementById('rank-pos').innerText = POS_RANKS[pIdx]; document.getElementById('rank-prop').innerText = PROP_RANKS[lIdx];
         const wCount = user.willCount || 0; document.getElementById('rank-will').innerText = `修行 ${wCount} 次 / ${wCount >= 5 ? WILL_RANKS[9-Math.floor(wCount/5)]||'龍潭守護神' : '新晉拼圖員'}`;
         const specWall = document.getElementById('medal-special-wall'); specWall.innerHTML = "";
-        WILL_RANKS.slice().reverse().forEach((name, i) => { const target = (i + 1) * 5; const m = document.createElement('div'); m.className = `medal-icon ${wCount >= target ? 'medal-active' : ''}`; m.innerText = name.split(' ').pop(); m.title = `${name} (修行滿 ${target} 次)`; specWall.appendChild(m); });
+        WILL_RANKS.slice().reverse().forEach((name, i) => { const target = (i + 1) * 5; const m = document.createElement('div'); m.className = `medal-icon ${wCount >= target ? 'medal-active' : ''}`; m.innerText = name.split(' ').pop(); m.title = `${name} (滿 ${target} 次修行)`; specWall.appendChild(m); });
         if (user.neverGiveUp) { const m = document.createElement('div'); m.className = "medal-icon medal-active never-give-up"; m.innerText = "🛡️"; specWall.appendChild(m); }
     }
 
-    // 💡 放大鏡 (V8.4 Fixed 定位)
-    function pieceEnter() { const img = document.getElementById('active-box-img'); img.classList.add('zoomed'); img.style.setProperty('--zoom-scale', zoomLevel); }
-    function pieceLeave() { document.getElementById('active-box-img').classList.remove('zoomed'); }
-    function pieceWheel(e) { e.preventDefault(); if (e.deltaY < 0) zoomLevel = Math.min(4, zoomLevel + 0.1); else zoomLevel = Math.max(1, zoomLevel - 0.1); document.getElementById('active-box-img').style.setProperty('--zoom-scale', zoomLevel); }
+    // 💡 放大鏡控制 (原地偏移)
+    function pieceWheel(e) { e.preventDefault(); if (e.deltaY < 0) zoomLevel = Math.min(4.5, zoomLevel + 0.15); else zoomLevel = Math.max(1, zoomLevel - 0.15); document.getElementById('active-box-img').style.setProperty('--zoom-scale', zoomLevel); }
 
     async function startGame(m) {
         mode = m; document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-container').style.display = 'flex';
@@ -203,13 +206,7 @@
                 const b = document.createElement('button'); b.className = "btn"; b.style.width="auto"; b.innerText = ans;
                 b.onclick = async () => {
                     if (answers[tId].includes(ans)) { closeModal(); playAnimate(tId); }
-                    else { 
-                        currentPropErr++; 
-                        const errText = (mode==='practice') ? "性質判斷好像有點誤會，再觀察一下三角形的條件喔！" : "性質判定錯誤！(+20s)";
-                        triggerErrorFlash(20, errText); 
-                        await logDiagnostic(tId, "property", ans); // 診斷紀錄
-                        updateRaceDataToFirebase();
-                    }
+                    else { currentPropErr++; const errText = (mode==='practice') ? "性質判斷好像有點誤會，再觀察一下三角形的條件喔！" : "性質判定錯誤！(+20s)"; triggerErrorFlash(20, errText); await logDiagnostic(tId, "property", ans); updateRaceDataToFirebase(); }
                 };
                 btns.appendChild(b);
             });
@@ -220,7 +217,6 @@
     async function updateRaceDataToFirebase() {
         if (mode === 'race' && user && user.id !== ADMIN_ID) {
             const updates = { currentProgress: currentNum, currentPosErr: currentPosErr, currentPropErr: currentPropErr, currentTotalTime: rawSeconds + penaltySeconds };
-            // 💡 修正 15/3 邏輯矛盾：歷史紀錄隨時超越更新
             if (currentNum > (user.progress || 1)) updates.progress = currentNum;
             if (user.bestPosErr === undefined || currentPosErr < user.bestPosErr) updates.bestPosErr = currentPosErr;
             if (user.bestPropErr === undefined || currentPropErr < user.bestPropErr) updates.bestPropErr = currentPropErr;
@@ -230,7 +226,7 @@
     }
     async function finishGame() {
         if (mode === 'race') { clearInterval(raceTimer); const total = rawSeconds + penaltySeconds; const updates = { lastRaceTime: total, progress: 36 }; if (!user.bestRaceTime || total < user.bestRaceTime) updates.bestRaceTime = total; if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true; await db.collection("players").doc(user.id).update(updates); await db.collection("leaderboard").doc(user.id).set({ id: user.id, name: user.name, total, progress: 36, time: firebase.firestore.FieldValue.serverTimestamp() }); Object.assign(user, updates); refreshHonorUI(); document.getElementById('final-total-score').innerText = total; document.getElementById('victory-modal').style.display = 'block'; confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
-        else { document.getElementById('prog-text').innerText = `36 / 36 (全數拼完!)`; document.getElementById('progress-fill').style.width = "100%"; document.getElementById('active-box').innerHTML = `<div style="color:var(--primary); font-weight:bold; font-size:18px;">🌟 完成挑戰！</div>`; confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } }); }
+        else { document.getElementById('prog-text').innerText = `36 / 36 (完成!)`; document.getElementById('progress-fill').style.width = "100%"; document.getElementById('active-box').innerHTML = `<div style="color:var(--primary); font-weight:bold; font-size:18px;">🌟 完成挑戰！</div>`; confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } }); }
     }
 
     function handleGlobalKeydown(e) { if (e.key === 'Escape') closeModal(); }
@@ -242,51 +238,40 @@
     function openCustomDialog({ title, msg = "" }) { const modal = document.getElementById('modal-overlay'), dialog = document.getElementById('custom-dialog'), content = document.getElementById('admin-content'), btns = document.getElementById('dialog-btns'); document.getElementById('dialog-title').innerText = title; document.getElementById('dialog-msg').innerText = msg; content.style.display = 'none'; btns.innerHTML = `<button class="btn" style="background:#ccc" onclick="closeModal()">關閉</button>`; modal.style.display = 'block'; dialog.style.display = 'block'; }
     function triggerErrorFlash(sec, msg) { if (mode === 'race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
     function backToModeSelect() { if(raceTimer) clearInterval(raceTimer); document.getElementById('main-container').style.display = 'none'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('step-mode').style.display = 'block'; }
-    function confirmRestartGame() { if(confirm("確定重來？進度將重置")) { if(mode==='race') beginRaceNow(); else { currentNum=1; initGame(); } } }
+    function confirmRestartGame() { if(confirm("確定重來？")) { if(mode==='race') beginRaceNow(); else { currentNum=1; initGame(); } } }
     function initAllSensors() { const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = ""; Object.keys(triangleData).forEach(id => { const pts = triangleData[id], poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); poly.setAttribute("points", pts.map(p => `${p.x},${p.y * (707/750)}`).join(" ")); poly.setAttribute("class", "target-poly"); poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); }; poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = 'block'; } }; poly.onmousemove = (e) => { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; }; poly.onmouseleave = () => tooltip.style.display = 'none'; layer.appendChild(poly); }); }
     function updateGame() { if (currentNum > 36) { finishGame(); return; } const id = currentNum.toString().padStart(2, '0'); document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; document.getElementById('active-box-img').src = `piece${id}.png`; }
     function playAnimate(id) { const pts = triangleData[id], cX = (pts[0].x+pts[1].x+pts[2].x)/3, cY = (pts[0].y+pts[1].y+pts[2].y)/3*(707/750); const img = document.createElement('img'); img.src = `piece${id}.png`; img.className='flying-piece'; img.style.left="80%"; img.style.top="50%"; img.style.width="200px"; document.getElementById('animation-layer').appendChild(img); setTimeout(() => { img.style.left=(cX-100)+"px"; img.style.top=(cY-100)+"px"; img.style.opacity="0"; setTimeout(() => { document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); else updateRaceDataToFirebase(); updateGame(); }, 650); }, 50); }
     function addPermanentGlaze(id) { const pts = triangleData[id]; if(!pts) return; const g = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); g.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" ")); g.setAttribute("class", "liquid-glass-polygon"); document.getElementById('placed-polygons').appendChild(g); }
     function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
     async function handleRegister() { const id = document.getElementById('login-id').value.trim(), name = document.getElementById('reg-name').value.trim(), pwd = document.getElementById('reg-pwd').value.trim(); if(!name || pwd.length<8) return alert("資料不全"); await db.collection("players").doc(id).set({ name, password: pwd, progress: 1, willCount: 0 }); location.reload(); }
-    async function showRank() { const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; list.slice(0, 50).forEach((d, idx) => h += `<tr><td>${idx+1}</td><td>${d.name}</td><td>${d.progress} 關</td><td><b>${d.total}s</b></td></tr>`); openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; }
+    async function showRank() { const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; list.slice(0, 50).forEach((d, idx) => h += `<tr><td>${idx+1}</td><td>${d.name}</td><td>${d.progress} 關</td><td><b>${d.total}s</b></td></tr>`); openCustomDialog({ title: "🏆 排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; }
 
-    // 💡 權重診斷後台 (V8.4)
     async function showAdmin() {
-        const snapPlayers = await db.collection("players").get();
-        const snapAn = await db.collection("analytics").get();
-        const snapLe = await db.collection("leaderboard").get();
-        let players = [], analytics = [], attempts = {};
-        snapPlayers.forEach(d => players.push({id: d.id, ...d.data()}));
-        snapAn.forEach(d => analytics.push(d.data()));
-        snapLe.forEach(d => { attempts[d.progress] = (attempts[d.progress]||0) + 1; });
-
+        const snapPlayers = await db.collection("players").get(); const snapAn = await db.collection("analytics").get(); const snapLe = await db.collection("leaderboard").get(); let players = [], analytics = [], attempts = {}; snapPlayers.forEach(d => players.push({id: d.id, ...d.data()})); snapAn.forEach(d => analytics.push(d.data())); snapLe.forEach(d => { attempts[d.progress] = (attempts[d.progress]||0) + 1; });
         const renderAdminTab = (tab) => {
             let h = `<div class="admin-tabs"><button class="admin-tab-btn ${tab==='user'?'active':''}" onclick="renderAdminTab('user')">👤 帳號</button><button class="admin-tab-btn ${tab==='data'?'active':''}" onclick="renderAdminTab('data')">📊 數據</button><button class="admin-tab-btn ${tab==='diag'?'active':''}" onclick="renderAdminTab('diag')">🧠 診斷</button></div><div style="max-height:400px; overflow-y:auto;">`;
             if(tab==='user'){ h += `<table class="admin-table"><tr><th>學號</th><th>姓名</th><th>密碼</th><th>操作</th></tr>`; players.forEach(p => { if(p.id!==ADMIN_ID) h += `<tr><td>${p.id}</td><td>${p.name}</td><td>${p.password}</td><td><button onclick="deleteUser('${p.id}')" style="color:red; cursor:pointer;">刪除</button></td></tr>`; }); h += `</table>`; }
-            else if(tab==='data'){ h += `<table class="admin-table"><tr><th>姓名</th><th>修行</th><th>進度(本次/歷史)</th><th>目前秒數</th><th>Pos/Prop錯</th></tr>`; players.forEach(p => { if(p.id!==ADMIN_ID) h += `<tr><td>${p.name}</td><td>${p.willCount||0}</td><td>${p.currentProgress||0} / ${p.progress||1}</td><td>${p.currentTotalTime||0}s</td><td>${p.currentPosErr||0} / ${p.currentPropErr||0}</td></tr>`; }); h += `</table>`; }
+            else if(tab==='data'){ h += `<table class="admin-table"><tr><th>姓名</th><th>修行</th><th>進度(本/歷)</th><th>Pos/Prop錯</th></tr>`; players.forEach(p => { if(p.id!==ADMIN_ID) h += `<tr><td>${p.name}</td><td>${p.willCount||0}</td><td>${p.currentProgress||0} / ${p.progress||1}</td><td>${p.currentPosErr||0} / ${p.currentPropErr||0}</td></tr>`; }); h += `</table>`; }
             else {
-                // 💡 診斷邏輯：錯誤率與精通度
-                let stageErrors = {}, propErrors = {}, propTotal = {};
-                analytics.forEach(a => {
-                    if(a.type==='position') stageErrors[a.questionId] = (stageErrors[a.questionId]||0)+1;
-                    if(a.type==='property') { propErrors[a.value] = (propErrors[a.value]||0)+1; }
-                });
-                h += `<div style="padding:15px;"><h3>🔥 魔王關卡 (依錯誤頻率排序)</h3>`;
-                Object.entries(stageErrors).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([id, c]) => h += `• 第 <b>${id}</b> 關：平均每人點錯 <b>${(c/(attempts[id]||1)).toFixed(1)}</b> 次<br>`);
-                h += `<h3>🧪 易混淆性質 (錯誤百分比)</h3>`;
-                Object.entries(propErrors).sort((a,b)=>b[1]-a[1]).forEach(([p, c]) => h += `• <b>${p}</b>性質：判定失敗次數共 <b>${c}</b> 次<br>`);
+                let stageErrors = {}, propErrors = {};
+                analytics.forEach(a => { if(a.type==='position') stageErrors[a.questionId] = (stageErrors[a.questionId]||0)+1; if(a.type==='property') propErrors[a.value] = (propErrors[a.value]||0)+1; });
+                h += `<div style="padding:15px;"><h3>🔥 魔王三角形 (平均出錯率)</h3>`;
+                Object.entries(stageErrors).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([id, c]) => h += `• 第 <b>${id}</b> 關：平均點錯 <b>${(c/(attempts[id]||1)).toFixed(1)}</b> 次<br>`);
+                h += `<h3>🧪 混淆性質統計</h3>`;
+                Object.entries(propErrors).sort((a,b)=>b[1]-a[1]).forEach(([p, c]) => h += `• <b>${p}</b>判定失敗： <b>${c}</b> 次<br>`);
                 h += `</div>`;
             }
             document.getElementById('admin-content').innerHTML = h + `</div>`;
         };
         window.renderAdminTab = renderAdminTab; openCustomDialog({ title: "⚙️ 管理後台" }); document.getElementById('admin-content').style.display = 'block'; renderAdminTab('user');
     }
-    async function deleteUser(id) { if(confirm("確定永久刪除？")) { await db.collection("players").doc(id).delete(); showAdmin(); } }
+    async function deleteUser(id) { if(confirm("永久刪除？")) { await db.collection("players").doc(id).delete(); showAdmin(); } }
     function handleResize() { const wrapper = document.getElementById('game-wrapper'), outer = document.getElementById('game-wrapper-outer'); const ratio = Math.min((window.innerWidth < 1100 ? window.innerWidth - 30 : window.innerWidth - 370)/1000, (window.innerHeight - 100)/707, 0.95); wrapper.style.transform = `scale(${ratio})`; outer.style.width = (1000 * ratio) + "px"; outer.style.height = (707 * ratio) + "px"; }
+    window.addEventListener('resize', handleResize); window.addEventListener('DOMContentLoaded', handleResize);
 
-    const answers = {"01":["ASA"],"02":["ASA","AAS"],"03":["SAS","SSS"],"04":["RHS","AAS","ASA"],"05":["SAS"],"06":["ASA","SAS","SSS","AAS"],"07":["SAS"],"08":["SSS"],"09":["ASA","SAS","AAS"],"10":["AAS"],"11":["SSS"],"12":["ASA","AAS","SAS"],"13":["ASA","AAS"],"14":["SAS","SSS","ASA"],"15":["ASA","SAS","AAS"],"16":["ASA"],"17":["ASA"],"18":["ASA","AAS"],"19":["ASA","AAS"],"20":["ASA"],"21":["SSS","SAS","RHS","AAS","ASA"],"22":["ASA","AAS"],"23":["ASA","AAS"],"24":["SAS"],"25":["SSS"],"26":["ASA"],"27":["AAS","SAS"],"28":["AAS"],"29":["SAS","ASA"],"30":["ASA"],"31":["ASA"],"32":["RHS"],"33":["ASA","AAS"],"34":["AAS"],"35":["SAS"],"36":["AAS","ASA"]};
     const triangleData = {"10":[{"x":623,"y":371},{"x":683,"y":248},{"x":850,"y":357}],"11":[{"x":539,"y":546},{"x":619,"y":379},{"x":718,"y":540}],"12":[{"x":668,"y":448},{"x":926,"y":505},{"x":771,"y":615}],"13":[{"x":384,"y":450},{"x":593,"y":419},{"x":533,"y":546}],"14":[{"x":380,"y":453},{"x":526,"y":550},{"x":373,"y":642}],"15":[{"x":245,"y":362},{"x":372,"y":449},{"x":302,"y":550}],"16":[{"x":56,"y":263},{"x":163,"y":482},{"x":51,"y":671}],"17":[{"x":61,"y":256},{"x":435,"y":36},{"x":278,"y":221}],"18":[{"x":240,"y":367},{"x":298,"y":551},{"x":140,"y":531}],"19":[{"x":690,"y":244},{"x":956,"y":178},{"x":857,"y":355}],"20":[{"x":861,"y":360},{"x":960,"y":184},{"x":930,"y":495}],"21":[{"x":321,"y":228},{"x":373,"y":442},{"x":245,"y":357}],"22":[{"x":536,"y":553},{"x":712,"y":544},{"x":557,"y":699}],"23":[{"x":290,"y":578},{"x":374,"y":457},{"x":367,"y":639}],"24":[{"x":624,"y":376},{"x":734,"y":370},{"x":664,"y":440}],"25":[{"x":746,"y":368},{"x":856,"y":362},{"x":842,"y":478}],"26":[{"x":641,"y":77},{"x":878,"y":40},{"x":747,"y":196}],"27":[{"x":377,"y":647},{"x":531,"y":555},{"x":552,"y":704}],"28":[{"x":141,"y":538},{"x":296,"y":558},{"x":195,"y":701}],"29":[{"x":742,"y":369},{"x":836,"y":481},{"x":668,"y":444}],"30":[{"x":136,"y":539},{"x":187,"y":702},{"x":55,"y":677}],"31":[{"x":860,"y":367},{"x":925,"y":500},{"x":848,"y":482}],"32":[{"x":286,"y":583},{"x":365,"y":644},{"x":199,"y":703}],"33":[{"x":751,"y":199},{"x":879,"y":46},{"x":830,"y":203}],"34":[{"x":886,"y":42},{"x":957,"y":171},{"x":836,"y":202}],"35":[{"x":723,"y":544},{"x":784,"y":647},{"x":564,"y":701}],"36":[{"x":58,"y":259},{"x":317,"y":222},{"x":167,"y":477}],"01":[{"x":493,"y":195},{"x":815,"y":207},{"x":490,"y":287}],"02":[{"x":492,"y":292},{"x":676,"y":248},{"x":598,"y":411}],"03":[{"x":491,"y":297},{"x":593,"y":413},{"x":509,"y":426}],"04":[{"x":383,"y":444},{"x":488,"y":297},{"x":504,"y":426}],"05":[{"x":327,"y":224},{"x":485,"y":291},{"x":378,"y":442}],"06":[{"x":331,"y":220},{"x":489,"y":196},{"x":487,"y":287}],"07":[{"x":494,"y":193},{"x":634,"y":77},{"x":742,"y":199}],"08":[{"x":444,"y":35},{"x":626,"y":77},{"x":493,"y":190}],"09":[{"x":442,"y":35},{"x":488,"y":192},{"x":283,"y":221}]};
+    const answers = {"01":["ASA"],"02":["ASA","AAS"],"03":["SAS","SSS"],"04":["RHS","AAS","ASA"],"05":["SAS"],"06":["ASA","SAS","SSS","AAS"],"07":["SAS"],"08":["SSS"],"09":["ASA","SAS","AAS"],"10":["AAS"],"11":["SSS"],"12":["ASA","AAS","SAS"],"13":["ASA","AAS"],"14":["SAS","SSS","ASA"],"15":["ASA","SAS","AAS"],"16":["ASA"],"17":["ASA"],"18":["ASA","AAS"],"19":["ASA","AAS"],"20":["ASA"],"21":["SSS","SAS","RHS","AAS","ASA"],"22":["ASA","AAS"],"23":["ASA","AAS"],"24":["SAS"],"25":["SSS"],"26":["ASA"],"27":["AAS","SAS"],"28":["AAS"],"29":["SAS","ASA"],"30":["ASA"],"31":["ASA"],"32":["RHS"],"33":["ASA","AAS"],"34":["AAS"],"35":["SAS"],"36":["AAS","ASA"]};
 </script>
 </body>
 </html>
