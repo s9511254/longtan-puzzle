@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V8.6 - 超視距放大版</title>
+    <title>龍潭大池拼圖系統 V8.7 - 戰績擇優錄取版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -25,27 +25,23 @@
         #race-start-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; text-align: center; }
         .start-btn { padding: 25px 80px; font-size: 42px; background: var(--accent); color: white; border: none; border-radius: 60px; cursor: pointer; font-weight: bold; box-shadow: 0 0 30px var(--accent); animation: breathe 2s infinite ease-in-out; }
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        
         #mission-panel { width: 340px; background: #fff; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0; display: flex; flex-direction: column; height: 707px; position: relative; }
         .tab-header { display: flex; background: #f5f5f5; border-bottom: 1px solid #ddd; border-radius: 20px 20px 0 0; overflow: hidden; }
         .tab-btn { flex: 1; padding: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; color: #666; transition: 0.3s; background: transparent; }
         .tab-btn.active { background: white; color: var(--primary); border-top: 4px solid var(--primary); }
         .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; position: relative; }
         .tab-content.active { display: block; }
-        
-        /* 💡 V8.6 預覽方框：移除原本的 Hover 放大，改由 JS 控制浮動層 */
         .current-piece-box { width: 100%; height: 210px; margin: 10px 0; border: 3px solid var(--accent); border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; position: relative; cursor: zoom-in; }
         #active-box-img { max-width: 190px; max-height: 190px; }
-
-        /* 💡 V8.6 獨立浮動放大鏡樣式 */
         #floating-zoom-lens { position: fixed; display: none; pointer-events: none; z-index: 100000; background: white; border: 4px solid var(--accent); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); padding: 10px; overflow: hidden; }
         #floating-zoom-lens img { width: 100%; height: 100%; object-fit: contain; }
-
         .achievement-card { background: #f9f9f9; border-radius: 12px; padding: 10px; margin: 8px 0; border-left: 5px solid var(--secondary); font-size: 13px; }
         .rank-badge { font-size: 18px; font-weight: bold; display: block; margin-top: 3px; color: var(--dark); }
         .medal-wall { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
         .medal-icon { width: 32px; height: 32px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; opacity: 0.2; filter: grayscale(1); cursor: help; }
         .medal-active { opacity: 1; filter: grayscale(0); background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .never-give-up { animation: glow 1.5s infinite alternate; }
+        @keyframes glow { from { box-shadow: 0 0 2px var(--danger); } to { box-shadow: 0 0 10px var(--danger); } }
         .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 8px; font-size: 15px; transition: 0.2s; }
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 20000; backdrop-filter: blur(4px); }
         .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 24px; width: 650px; z-index: 20001; border: 6px solid var(--secondary); max-height: 85vh; overflow-y: auto; }
@@ -67,12 +63,11 @@
 
 <div id="orientation-overlay"><h2>請旋轉螢幕</h2><p>手機橫放使用體驗最佳。</p></div>
 <div id="ans-tooltip"></div>
-
 <div id="floating-zoom-lens"><img id="zoom-lens-img" src=""></div>
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.6</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.7</h2>
         <div id="step-id"><input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button></div>
         <div id="step-pwd" style="display:none;"><p id="greet-user" style="font-weight:bold;"></p><input type="password" id="login-pwd" placeholder="密碼" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleLogin()">進入系統</button></div>
         <div id="step-reg" style="display:none;"><p style="color:var(--danger); font-weight:bold;">註冊新帳號</p><input type="text" id="reg-name" placeholder="姓名" style="width:85%; padding:12px; margin-bottom:10px; text-align:center; border:2px solid #ddd; border-radius:10px;"><input type="password" id="reg-pwd" placeholder="密碼(至少8碼)" style="width:85%; padding:12px; margin-bottom:15px; text-align:center; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleRegister()">完成註冊</button></div>
@@ -94,7 +89,7 @@
                         <b>📏 挑戰規則：</b><br>
                         1. 📍 點錯罰 10 秒；判錯性質罰 20 秒。<br>
                         2. ⌛ 挑戰將記錄您的最佳成績與錯誤分布。<br>
-                        3. 🏆 目標：最強傳說段位！
+                        3. 🏆 採「擇優錄取」：系統會保留您的最高關卡與最短時間。
                     </div>
                 </div>
                 <div id="flash-overlay" style="position:absolute; width:100%; height:100%; z-index:200; pointer-events:none;"></div>
@@ -121,11 +116,7 @@
                 <p style="margin:0 0 5px 0; font-size:12px; color:#558b2f;">⏭️ 跳轉關卡 (1-36):</p>
                 <div style="display:flex; gap:5px;"><input type="number" id="jump-num" min="1" max="36" style="flex:1; border-radius:5px; border:1px solid #999; text-align:center;"><button onclick="handleJump()" style="padding:2px 10px; background:#558b2f; color:white; border:none; border-radius:5px; cursor:pointer;">跳轉</button></div>
             </div>
-            
-            <div id="active-box" class="current-piece-box" onmouseenter="startFloatingZoom()" onmouseleave="stopFloatingZoom()" onmousemove="moveFloatingZoom(event)" onwheel="zoomFloatingZoom(event)">
-                <img id="active-box-img" src="">
-            </div>
-            
+            <div id="active-box" class="current-piece-box" onmouseenter="startFloatingZoom()" onmouseleave="stopFloatingZoom()" onmousemove="moveFloatingZoom(event)" onwheel="zoomFloatingZoom(event)"><img id="active-box-img" src=""></div>
             <div id="race-stats" style="display:none; background:#fff3e0; padding:10px; border-radius:10px; color:#e65100; font-size:14px; margin-bottom:10px;">⏱️ 用時：<span id="stat-time">00:00</span> (+<span id="stat-penalty">0</span>s)<br>❌ 點錯：<span id="stat-pos-err">0</span> | 判錯：<span id="stat-prop-err">0</span></div>
             <div id="teacher-tools" class="toggle-switch" style="display:none;"><span>👁️ 顯示答案位置</span><input type="checkbox" id="ans-toggle" style="width:20px; height:20px; cursor:pointer;"></div>
             <button class="btn" style="background:var(--gold);" onclick="showRank()">🏆 排行榜</button>
@@ -143,7 +134,7 @@
 </div>
 
 <div id="modal-overlay" onclick="closeOnOverlayClick(event)"></div>
-<div id="custom-dialog" class="custom-dialog"><h2 id="dialog-title"></h2><p id="dialog-msg"></p><div id="admin-content" style="display:none; margin-top:15px;"></div><div id="dialog-btns" style="display:flex; justify-content:space-around; flex-wrap:gap:10px; margin-top:20px;"></div></div>
+<div id="custom-dialog" class="custom-dialog"><h2 id="dialog-title"></h2><p id="dialog-msg"></p><div id="admin-content" style="display:none; margin-top:15px;"></div><div id="dialog-btns" style="display:flex; justify-content:space-around; flex-wrap:wrap; gap:10px; margin-top:20px;"></div></div>
 
 <script>
     const firebaseConfig = { apiKey: "AIzaSyAxd1n_6-4KUDALQztN2_8cusSljWxq9mo", authDomain: "longtan-puzzle-system.firebaseapp.com", projectId: "longtan-puzzle-system", storageBucket: "longtan-puzzle-system.firebasestorage.app", messagingSenderId: "634507608403", appId: "1:634507608403:web:1c64d268316847004be1a6" };
@@ -187,33 +178,13 @@
         if (user.neverGiveUp) { const m = document.createElement('div'); m.className = "medal-icon medal-active never-give-up"; m.innerText = "🛡️"; specWall.appendChild(m); }
     }
 
-    // 💡 V8.6 浮動放大鏡 JavaScript 控制邏輯
     const lens = document.getElementById('floating-zoom-lens');
     const lensImg = document.getElementById('zoom-lens-img');
-
-    function startFloatingZoom() {
-        const currentSrc = document.getElementById('active-box-img').src;
-        if (!currentSrc || currentSrc.includes("piece00")) return;
-        lensImg.src = currentSrc;
-        lens.style.display = 'block';
-        updateLensSize();
-    }
+    function startFloatingZoom() { const src = document.getElementById('active-box-img').src; if (!src || src.includes("piece00")) return; lensImg.src = src; lens.style.display = 'block'; updateLensSize(); }
     function stopFloatingZoom() { lens.style.display = 'none'; }
-    function moveFloatingZoom(e) {
-        // 將放大鏡定位在滑鼠游標的左方 350px 處，避免擋住視線
-        lens.style.left = (e.clientX - 380) + 'px';
-        lens.style.top = (e.clientY - 150) + 'px';
-    }
-    function zoomFloatingZoom(e) {
-        e.preventDefault();
-        if (e.deltaY < 0) zoomLevel = Math.min(6, zoomLevel + 0.2);
-        else zoomLevel = Math.max(1.5, zoomLevel - 0.2);
-        updateLensSize();
-    }
-    function updateLensSize() {
-        lens.style.width = (150 * zoomLevel / 2) + 'px';
-        lens.style.height = (120 * zoomLevel / 2) + 'px';
-    }
+    function moveFloatingZoom(e) { lens.style.left = (e.clientX - 380) + 'px'; lens.style.top = (e.clientY - 150) + 'px'; }
+    function zoomFloatingZoom(e) { e.preventDefault(); if (e.deltaY < 0) zoomLevel = Math.min(6, zoomLevel + 0.2); else zoomLevel = Math.max(1.5, zoomLevel - 0.2); updateLensSize(); }
+    function updateLensSize() { lens.style.width = (150 * zoomLevel / 2) + 'px'; lens.style.height = (120 * zoomLevel / 2) + 'px'; }
 
     async function startGame(m) {
         mode = m; document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-container').style.display = 'flex';
@@ -228,8 +199,7 @@
     }
     function processPlacement(tId) {
         if (tId === currentNum.toString().padStart(2, '0')) {
-            stopFloatingZoom(); // 💡 跳出性質選擇時先關閉放大鏡
-            openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
+            stopFloatingZoom(); openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
             const btns = document.getElementById('dialog-btns'); btns.innerHTML = "";
             ["SSS","SAS","ASA","AAS","RHS"].forEach(ans => {
                 const b = document.createElement('button'); b.className = "btn"; b.style.width="auto"; b.innerText = ans;
@@ -243,19 +213,49 @@
         } else { currentPosErr++; triggerErrorFlash(10, ""); logDiagnostic(tId, "position", "wrong_pos"); updateRaceDataToFirebase(); }
     }
     async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
+    
+    // 💡 V8.7 修正：擇優錄取邏輯
     async function updateRaceDataToFirebase() {
         if (mode === 'race' && user && user.id !== ADMIN_ID) {
-            const updates = { currentProgress: currentNum, currentPosErr: currentPosErr, currentPropErr: currentPropErr, currentTotalTime: rawSeconds + penaltySeconds };
+            const totalNow = rawSeconds + penaltySeconds;
+            const currentFinishCount = currentNum - 1;
+            const updates = { currentProgress: currentNum, currentPosErr: currentPosErr, currentPropErr: currentPropErr, currentTotalTime: totalNow };
             if (currentNum > (user.progress || 1)) updates.progress = currentNum;
             if (user.bestPosErr === undefined || currentPosErr < user.bestPosErr) updates.bestPosErr = currentPosErr;
             if (user.bestPropErr === undefined || currentPropErr < user.bestPropErr) updates.bestPropErr = currentPropErr;
             await db.collection("players").doc(user.id).update(updates); Object.assign(user, updates);
-            await db.collection("leaderboard").doc(user.id).set({ id: user.id, name: user.name, total: rawSeconds + penaltySeconds, progress: currentNum - 1, time: firebase.firestore.FieldValue.serverTimestamp() });
+
+            // 排行榜擇優
+            const lbRef = db.collection("leaderboard").doc(user.id);
+            const lbDoc = await lbRef.get();
+            let shouldUpdate = !lbDoc.exists;
+            if (lbDoc.exists) {
+                const old = lbDoc.data();
+                if (currentFinishCount > old.progress) shouldUpdate = true;
+                else if (currentFinishCount === old.progress && totalNow < old.total) shouldUpdate = true;
+            }
+            if (shouldUpdate) {
+                await lbRef.set({ id: user.id, name: user.name, total: totalNow, progress: currentFinishCount, time: firebase.firestore.FieldValue.serverTimestamp() });
+            }
         }
     }
     async function finishGame() {
-        if (mode === 'race') { clearInterval(raceTimer); const total = rawSeconds + penaltySeconds; const updates = { lastRaceTime: total, progress: 36 }; if (!user.bestRaceTime || total < user.bestRaceTime) updates.bestRaceTime = total; if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true; await db.collection("players").doc(user.id).update(updates); await db.collection("leaderboard").doc(user.id).set({ id: user.id, name: user.name, total, progress: 36, time: firebase.firestore.FieldValue.serverTimestamp() }); Object.assign(user, updates); refreshHonorUI(); document.getElementById('final-total-score').innerText = total; document.getElementById('victory-modal').style.display = 'block'; confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
-        else { document.getElementById('prog-text').innerText = `36 / 36 (完成!)`; document.getElementById('progress-fill').style.width = "100%"; document.getElementById('active-box').innerHTML = `<div style="color:var(--primary); font-weight:bold; font-size:18px;">🌟 完成挑戰！</div>`; confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } }); }
+        if (mode === 'race') {
+            clearInterval(raceTimer); const total = rawSeconds + penaltySeconds;
+            const updates = { lastRaceTime: total, progress: 36 };
+            if (!user.bestRaceTime || total < user.bestRaceTime) updates.bestRaceTime = total;
+            if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true;
+            await db.collection("players").doc(user.id).update(updates);
+            // 完賽擇優更新排行榜
+            const lbRef = db.collection("leaderboard").doc(user.id);
+            const lbDoc = await lbRef.get();
+            if (!lbDoc.exists || lbDoc.data().progress < 36 || (lbDoc.data().progress === 36 && total < lbDoc.data().total)) {
+                await lbRef.set({ id: user.id, name: user.name, total, progress: 36, time: firebase.firestore.FieldValue.serverTimestamp() });
+            }
+            Object.assign(user, updates); refreshHonorUI(); document.getElementById('final-total-score').innerText = total; document.getElementById('victory-modal').style.display = 'block'; confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+        } else {
+            document.getElementById('prog-text').innerText = `36 / 36 (完成!)`; document.getElementById('progress-fill').style.width = "100%"; document.getElementById('active-box').innerHTML = `<div style="color:var(--primary); font-weight:bold; font-size:18px;">🌟 完成挑戰！</div>`; confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } });
+        }
     }
 
     function handleGlobalKeydown(e) { if (e.key === 'Escape') closeModal(); }
