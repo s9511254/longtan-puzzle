@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V8.8.1 - 排行榜修復版</title>
+    <title>龍潭大池拼圖系統 V8.9 - 體驗極致版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -43,6 +43,8 @@
         .medal-wall { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
         .medal-icon { width: 32px; height: 32px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; opacity: 0.2; filter: grayscale(1); cursor: help; }
         .medal-active { opacity: 1; filter: grayscale(0); background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .never-give-up { animation: glow 1.5s infinite alternate; }
+        @keyframes glow { from { box-shadow: 0 0 2px var(--danger); } to { box-shadow: 0 0 10px var(--danger); } }
         .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 8px; font-size: 15px; transition: 0.2s; }
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 20000; backdrop-filter: blur(4px); }
         .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 24px; width: 650px; z-index: 20001; border: 6px solid var(--secondary); max-height: 85vh; overflow-y: auto; }
@@ -68,9 +70,16 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.8.1</h2>
-        <div id="step-id"><input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button></div>
-        <div id="step-pwd" style="display:none;"><p id="greet-user" style="font-weight:bold;"></p><input type="password" id="login-pwd" placeholder="密碼" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleLogin()">進入系統</button></div>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.9</h2>
+        <div id="step-id">
+            <input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
+            <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
+        </div>
+        <div id="step-pwd" style="display:none;">
+            <p id="greet-user" style="font-weight:bold;"></p>
+            <input type="password" id="login-pwd" placeholder="密碼" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) handleLogin()">
+            <button class="btn" style="background:var(--primary); color:white;" onclick="handleLogin()">進入系統</button>
+        </div>
         <div id="step-reg" style="display:none;"><p style="color:var(--danger); font-weight:bold;">註冊新帳號</p><input type="text" id="reg-name" placeholder="姓名" style="width:85%; padding:12px; margin-bottom:10px; text-align:center; border:2px solid #ddd; border-radius:10px;"><input type="password" id="reg-pwd" placeholder="密碼(至少8碼)" style="width:85%; padding:12px; margin-bottom:15px; text-align:center; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleRegister()">完成註冊</button></div>
         <div id="step-mode" style="display:none;"><h3>模式選擇</h3><button class="btn" style="padding:18px; font-size:20px; background:white; border:3px solid var(--secondary); margin-bottom:15px; color:var(--secondary);" onclick="startGame('practice')">🏋️ 練習模式</button><button class="btn" style="padding:18px; font-size:20px; background:white; border:3px solid var(--secondary); margin-bottom:15px; color:var(--secondary);" onclick="startGame('race')">🏆 競賽模式</button><button id="admin-main-btn" class="btn" style="display:none; background:#3f51b5; color:white; padding:15px;" onclick="showAdmin()">⚙️ 管理後台</button></div>
     </div>
@@ -152,7 +161,7 @@
     const PROP_RANKS = ["邏輯真理神 🧪","幾何賢者 🧪","邏輯執行官 🧪","幾何策士 🧪","推理分析師 🧪","邏輯小尖兵 🧪","性質實習生 🧪","尚未獲得"];
 
     function switchTab(t) { document.querySelectorAll('.tab-btn, .tab-content').forEach(e=>e.classList.remove('active')); document.getElementById(`btn-${t}`).classList.add('active'); document.getElementById(`tab-${t}`).classList.add('active'); }
-    async function checkID() { const id = document.getElementById('login-id').value.trim(); if(!id) return; const doc = await db.collection("players").doc(id).get(); document.getElementById('step-id').style.display = 'none'; if (doc.exists) { user = { id, ...doc.data() }; document.getElementById('greet-user').innerText = `你好，${user.name}！`; document.getElementById('step-pwd').style.display = 'block'; } else { document.getElementById('step-reg').style.display = 'block'; } }
+    async function checkID() { const id = document.getElementById('login-id').value.trim(); if(!id) return; const doc = await db.collection("players").doc(id).get(); document.getElementById('step-id').style.display = 'none'; if (doc.exists) { user = { id, ...doc.data() }; document.getElementById('greet-user').innerText = `你好，${user.name}！`; document.getElementById('step-pwd').style.display = 'block'; setTimeout(()=>document.getElementById('login-pwd').focus(), 100); } else { document.getElementById('step-reg').style.display = 'block'; } }
     async function handleLogin() {
         const pwd = document.getElementById('login-pwd').value;
         if ((user.id === ADMIN_ID && pwd === ADMIN_PWD) || pwd === user.password) {
@@ -222,7 +231,6 @@
             const updates = { currentProgress: currentNum, currentTotalTime: totalNow, currentPosErr, currentPropErr };
             if (currentNum > (user.progress || 1)) updates.progress = currentNum;
             await db.collection("players").doc(user.id).update(updates); Object.assign(user, updates);
-            // 擇優排行榜邏輯
             const lbRef = db.collection("leaderboard").doc(user.id); const lbDoc = await lbRef.get();
             let shouldUpdate = !lbDoc.exists;
             if (lbDoc.exists) { const old = lbDoc.data(); if (currentFinishCount > old.progress) shouldUpdate = true; else if (currentFinishCount === old.progress && totalNow < old.total) shouldUpdate = true; }
@@ -242,7 +250,7 @@
     function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.getElementById('custom-dialog').style.display = 'none'; }
     function openCustomDialog({ title, msg = "" }) { const modal = document.getElementById('modal-overlay'), dialog = document.getElementById('custom-dialog'), content = document.getElementById('admin-content'), btns = document.getElementById('dialog-btns'); document.getElementById('dialog-title').innerText = title; document.getElementById('dialog-msg').innerText = msg; content.style.display = 'none'; btns.innerHTML = `<button class="btn" style="background:#ccc" onclick="closeModal()">關閉</button>`; modal.style.display = 'block'; dialog.style.display = 'block'; }
     function triggerErrorFlash(sec, msg) { if (mode === 'race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
-    function backToModeSelect() { if(raceTimer) clearInterval(raceTimer); document.getElementById('main-container').style.display = 'none'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('step-mode').style.display = 'block'; }
+    function backToModeSelect() { if(raceTimer) clearInterval(raceTimer); document.getElementById('main-container').style.display = 'none'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('step-mode').style.display = 'block'; setTimeout(()=>document.getElementById('login-id').focus(), 100); }
     function confirmRestartGame() { if(confirm("確定重來？")) { if(mode==='race') beginRaceNow(); else { currentNum=1; initGame(); } } }
     function initAllSensors() { const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = ""; Object.keys(triangleData).forEach(id => { const pts = triangleData[id], poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); poly.setAttribute("points", pts.map(p => `${p.x},${p.y * (707/750)}`).join(" ")); poly.setAttribute("class", "target-poly"); poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); }; poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = 'block'; } }; poly.onmousemove = (e) => { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; }; poly.onmouseleave = () => tooltip.style.display = 'none'; layer.appendChild(poly); }); }
     function updateGame() { if (currentNum > 36) { finishGame(); return; } const id = currentNum.toString().padStart(2, '0'); document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; document.getElementById('active-box-img').src = `piece${id}.png`; }
@@ -251,11 +259,8 @@
     function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
     async function handleRegister() { const id = document.getElementById('login-id').value.trim(), name = document.getElementById('reg-name').value.trim(), pwd = document.getElementById('reg-pwd').value.trim(); if(!name || pwd.length<8) return alert("資料不全"); await db.collection("players").doc(id).set({ name, password: pwd, progress: 1, willCount: 0 }); location.reload(); }
     
-    // 💡 修正後能正常顯示的排行榜 (V8.8.1)
     async function showRank() { 
-        const snap = await db.collection("leaderboard").get(); 
-        let list = []; snap.forEach(doc => list.push(doc.data())); 
-        list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); 
+        const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); 
         let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; 
         list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); 
         openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; 
@@ -274,7 +279,23 @@
     }
     async function triggerForceReload() { if(confirm("確定強制全員重整？")) { await db.collection("system").doc("config").set({ cmd: "FORCE_RELOAD", time: Date.now() }); alert("指令已發送"); setTimeout(()=>db.collection("system").doc("config").set({cmd:""}), 5000); } }
     async function editUser(id, name, pwd) { const newN = prompt("新姓名:", name), newP = prompt("新密碼:", pwd); if(newN && newP) { await db.collection("players").doc(id).update({name:newN, password:newP}); showAdmin(); } }
-    async function editRaceScore(id, name) { const prog = prompt(`${name} 的目前進度 (1-36):`, 1), sec = prompt(`${name} 的目前秒數:`, 0); if(prog && sec) { const d = { currentProgress: parseInt(prog), currentTotalTime: parseInt(sec), progress: parseInt(prog) }; await db.collection("players").doc(id).update(d); await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: parseInt(prog)-1, time: firebase.firestore.FieldValue.serverTimestamp() }); alert("修改成功"); showAdmin(); } }
+    // 💡 V8.9 修正：修改關卡為 0 時自動移除排行榜戰績
+    async function editRaceScore(id, name) {
+        const prog = prompt(`${name} 的目前進度 (1-36, 輸入0移除排行):`, 1), sec = prompt(`${name} 的目前秒數:`, 0);
+        if(prog !== null && sec !== null) {
+            const pNum = parseInt(prog);
+            const d = { currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum };
+            await db.collection("players").doc(id).update(d);
+            if (pNum === 0) {
+                await db.collection("leaderboard").doc(id).delete();
+                alert("已將該生從排行榜移除");
+            } else {
+                await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() });
+                alert("戰績修改成功");
+            }
+            showAdmin();
+        }
+    }
     async function clearFullRank() { if(confirm("確定清空所有排行榜紀錄？")) { const snap = await db.collection("leaderboard").get(); const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit(); alert("已清空"); showAdmin(); } }
     async function deleteUser(id) { if(confirm("永久刪除該帳號？")) { await db.collection("players").doc(id).delete(); await db.collection("leaderboard").doc(id).delete(); showAdmin(); } }
 
