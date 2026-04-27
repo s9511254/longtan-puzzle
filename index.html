@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V8.8 - 管理員神諭版</title>
+    <title>龍潭大池拼圖系統 V8.8.1 - 排行榜修復版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -68,7 +68,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.8</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.8.1</h2>
         <div id="step-id"><input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button></div>
         <div id="step-pwd" style="display:none;"><p id="greet-user" style="font-weight:bold;"></p><input type="password" id="login-pwd" placeholder="密碼" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleLogin()">進入系統</button></div>
         <div id="step-reg" style="display:none;"><p style="color:var(--danger); font-weight:bold;">註冊新帳號</p><input type="text" id="reg-name" placeholder="姓名" style="width:85%; padding:12px; margin-bottom:10px; text-align:center; border:2px solid #ddd; border-radius:10px;"><input type="password" id="reg-pwd" placeholder="密碼(至少8碼)" style="width:85%; padding:12px; margin-bottom:15px; text-align:center; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleRegister()">完成註冊</button></div>
@@ -89,8 +89,7 @@
                     <div style="margin-top:40px; background:rgba(255,255,255,0.1); padding:20px; border-radius:20px; text-align:left; width:75%; line-height:1.8; font-size:16px;">
                         <b>📏 挑戰規則：</b><br>
                         1. 📍 點錯罰 10 秒；判錯性質罰 20 秒。<br>
-                        2. ⌛ 挑戰將採「擇優錄取」保留最高戰績。<br>
-                        3. 🏆 教師可在後台協助進度跳轉與數據修正。
+                        2. 🏆 採「擇優錄取」：保留最高關卡與最短時間紀錄。
                     </div>
                 </div>
                 <div id="flash-overlay" style="position:absolute; width:100%; height:100%; z-index:200; pointer-events:none;"></div>
@@ -154,7 +153,6 @@
 
     function switchTab(t) { document.querySelectorAll('.tab-btn, .tab-content').forEach(e=>e.classList.remove('active')); document.getElementById(`btn-${t}`).classList.add('active'); document.getElementById(`tab-${t}`).classList.add('active'); }
     async function checkID() { const id = document.getElementById('login-id').value.trim(); if(!id) return; const doc = await db.collection("players").doc(id).get(); document.getElementById('step-id').style.display = 'none'; if (doc.exists) { user = { id, ...doc.data() }; document.getElementById('greet-user').innerText = `你好，${user.name}！`; document.getElementById('step-pwd').style.display = 'block'; } else { document.getElementById('step-reg').style.display = 'block'; } }
-    
     async function handleLogin() {
         const pwd = document.getElementById('login-pwd').value;
         if ((user.id === ADMIN_ID && pwd === ADMIN_PWD) || pwd === user.password) {
@@ -164,18 +162,8 @@
             sessionStart = Date.now(); refreshHonorUI(); startSessionMonitor(); startSystemCommandMonitor();
         } else alert("密碼錯誤");
     }
-
-    // 💡 系統指令監測 (強制重整機制)
-    function startSystemCommandMonitor() {
-        db.collection("system").doc("config").onSnapshot(doc => {
-            if(doc.exists && doc.data().cmd === "FORCE_RELOAD" && user.id !== ADMIN_ID) {
-                location.reload();
-            }
-        });
-    }
-
+    function startSystemCommandMonitor() { db.collection("system").doc("config").onSnapshot(doc => { if(doc.exists && doc.data().cmd === "FORCE_RELOAD" && user.id !== ADMIN_ID) { location.reload(); } }); }
     function startSessionMonitor() { setInterval(async () => { if (!hasCounted && (Date.now() - sessionStart) > 300000) { hasCounted = true; const ref = db.collection("players").doc(user.id); await db.runTransaction(async (t) => { const d = await t.get(ref); const n = (d.data().willCount || 0) + 1; t.update(ref, { willCount: n }); user.willCount = n; }); refreshHonorUI(); } }, 15000); }
-    
     function refreshHonorUI() {
         document.getElementById('user-info-small').innerText = `👤 ${user.name}`;
         const bestTime = user.bestRaceTime || 9999;
@@ -207,12 +195,10 @@
         else { document.getElementById('race-start-overlay').style.display = 'none'; document.getElementById('race-stats').style.display = 'none'; const doc = await db.collection("players").doc(user.id).get(); currentNum = (doc.exists && doc.data().progress <= 36) ? doc.data().progress : 1; }
         initGame(); switchTab('task');
     }
-
     function beginRaceNow() {
         document.getElementById('race-start-overlay').style.display = 'none'; currentNum = 1; penaltySeconds = 0; rawSeconds = 0; currentPosErr = 0; currentPropErr = 0; startTime = Date.now();
         if(raceTimer) clearInterval(raceTimer); raceTimer = setInterval(() => { rawSeconds = Math.floor((Date.now() - startTime) / 1000); document.getElementById('stat-time').innerText = `${Math.floor(rawSeconds/60).toString().padStart(2,'0')}:${(rawSeconds%60).toString().padStart(2,'0')}`; document.getElementById('stat-penalty').innerText = penaltySeconds; document.getElementById('stat-pos-err').innerText = currentPosErr; document.getElementById('stat-prop-err').innerText = currentPropErr; }, 1000); initGame();
     }
-
     function processPlacement(tId) {
         if (tId === currentNum.toString().padStart(2, '0')) {
             stopFloatingZoom(); openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
@@ -228,28 +214,21 @@
             const cancel = document.createElement('button'); cancel.className = "btn"; cancel.style.width="100%"; cancel.style.background="#ccc"; cancel.innerText = "❌ 返回觀察地圖"; cancel.onclick = closeModal; btns.appendChild(cancel);
         } else { currentPosErr++; triggerErrorFlash(10, ""); logDiagnostic(tId, "position", "wrong_pos"); updateRaceDataToFirebase(); }
     }
-
     async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
-    
     async function updateRaceDataToFirebase() {
         if (mode === 'race' && user && user.id !== ADMIN_ID) {
             const totalNow = rawSeconds + penaltySeconds;
             const currentFinishCount = currentNum - 1;
-            const updates = { currentProgress: currentNum, currentPosErr: currentPosErr, currentPropErr: currentPropErr, currentTotalTime: totalNow };
+            const updates = { currentProgress: currentNum, currentTotalTime: totalNow, currentPosErr, currentPropErr };
             if (currentNum > (user.progress || 1)) updates.progress = currentNum;
             await db.collection("players").doc(user.id).update(updates); Object.assign(user, updates);
-            const lbRef = db.collection("leaderboard").doc(user.id);
-            const lbDoc = await lbRef.get();
+            // 擇優排行榜邏輯
+            const lbRef = db.collection("leaderboard").doc(user.id); const lbDoc = await lbRef.get();
             let shouldUpdate = !lbDoc.exists;
-            if (lbDoc.exists) {
-                const old = lbDoc.data();
-                if (currentFinishCount > old.progress) shouldUpdate = true;
-                else if (currentFinishCount === old.progress && totalNow < old.total) shouldUpdate = true;
-            }
-            if (shouldUpdate) { await lbRef.set({ id: user.id, name: user.name, total: totalNow, progress: currentFinishCount, time: firebase.firestore.FieldValue.serverTimestamp() }); }
+            if (lbDoc.exists) { const old = lbDoc.data(); if (currentFinishCount > old.progress) shouldUpdate = true; else if (currentFinishCount === old.progress && totalNow < old.total) shouldUpdate = true; }
+            if (shouldUpdate) await lbRef.set({ id: user.id, name: user.name, total: totalNow, progress: currentFinishCount, time: firebase.firestore.FieldValue.serverTimestamp() });
         }
     }
-
     async function finishGame() {
         if (mode === 'race') { clearInterval(raceTimer); const total = rawSeconds + penaltySeconds; const updates = { lastRaceTime: total, progress: 36 }; if (!user.bestRaceTime || total < user.bestRaceTime) updates.bestRaceTime = total; if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true; await db.collection("players").doc(user.id).update(updates); const lbRef = db.collection("leaderboard").doc(user.id); const lbDoc = await lbRef.get(); if (!lbDoc.exists || lbDoc.data().progress < 36 || (lbDoc.data().progress === 36 && total < lbDoc.data().total)) { await lbRef.set({ id: user.id, name: user.name, total, progress: 36, time: firebase.firestore.FieldValue.serverTimestamp() }); } Object.assign(user, updates); refreshHonorUI(); document.getElementById('final-total-score').innerText = total; document.getElementById('victory-modal').style.display = 'block'; confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
         else { document.getElementById('prog-text').innerText = `36 / 36 (完成!)`; document.getElementById('progress-fill').style.width = "100%"; document.getElementById('active-box').innerHTML = `<div style="color:var(--primary); font-weight:bold; font-size:18px;">🌟 完成挑戰！</div>`; confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } }); }
@@ -272,7 +251,16 @@
     function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
     async function handleRegister() { const id = document.getElementById('login-id').value.trim(), name = document.getElementById('reg-name').value.trim(), pwd = document.getElementById('reg-pwd').value.trim(); if(!name || pwd.length<8) return alert("資料不全"); await db.collection("players").doc(id).set({ name, password: pwd, progress: 1, willCount: 0 }); location.reload(); }
     
-    // 💡 管理神諭後台 (V8.8)
+    // 💡 修正後能正常顯示的排行榜 (V8.8.1)
+    async function showRank() { 
+        const snap = await db.collection("leaderboard").get(); 
+        let list = []; snap.forEach(doc => list.push(doc.data())); 
+        list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); 
+        let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; 
+        list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); 
+        openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; 
+    }
+
     async function showAdmin() {
         const snapPlayers = await db.collection("players").get(); const snapAn = await db.collection("analytics").get(); const snapLe = await db.collection("leaderboard").get(); let players = [], analytics = [], attempts = {}; snapPlayers.forEach(d => players.push({id: d.id, ...d.data()})); snapAn.forEach(d => analytics.push(d.data())); snapLe.forEach(d => { attempts[d.progress] = (attempts[d.progress]||0) + 1; });
         const renderAdminTab = (tab) => {
