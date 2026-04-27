@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V10.0 - 頂級折射玻璃版</title>
+    <title>龍潭大池拼圖系統 V11.0 - 終極擬真液態玻璃</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -23,15 +23,12 @@
         .target-poly:hover { fill: rgba(0, 172, 193, 0.45); stroke: rgba(255,255,255,0.8); stroke-width: 2; }
         .target-poly.finished { fill: transparent !important; stroke: none !important; cursor: default !important; pointer-events: none !important; }
         
-        /* 💡 V10.0 頂級物理折射玻璃 */
+        /* 💡 V11.0 終極擬真玻璃樣式：模擬厚度與高光 */
         .liquid-glass-polygon { 
-            fill: url(#glassGradient); 
-            filter: url(#advancedRefraction); 
-            stroke: rgba(255, 255, 255, 0.8); 
-            stroke-width: 1.5; 
+            fill: rgba(255, 255, 255, 0.15); 
+            filter: url(#ultimateGlass); 
             pointer-events: none; 
-            /* 模仿實體玻璃的層次 */
-            backdrop-filter: blur(2px) contrast(1.1) brightness(1.05);
+            backdrop-filter: blur(3px) brightness(1.1) saturate(1.2);
         }
 
         #ans-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: bold; pointer-events: none; z-index: 1000; display: none; font-size: 14px; }
@@ -82,7 +79,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.0</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V11.0</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -117,21 +114,19 @@
                 <img id="map-bg" src="bg00.jpg">
                 <svg id="svg-layer" viewBox="0 0 1000 707">
                     <defs>
-                        <radialGradient id="glassGradient" cx="30%" cy="30%" r="60%" fx="30%" fy="30%">
-                            <stop offset="0%" style="stop-color:#ffffff; stop-opacity:0.4" />
-                            <stop offset="100%" style="stop-color:#b2ebf2; stop-opacity:0.1" />
-                        </radialGradient>
-                        
-                        <filter id="advancedRefraction" x="-40%" y="-40%" width="180%" height="180%">
-                            <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="3" result="noise" />
-                            <feDisplacementMap in="SourceGraphic" in2="noise" scale="12" xChannelSelector="R" yChannelSelector="G" result="distorted" />
+                        <filter id="ultimateGlass" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur" />
+                            <feOffset in="blur" dx="2" dy="2" result="offsetBlur" />
                             
-                            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
-                            <feSpecularLighting in="blur" surfaceScale="6" specularConstant="1.2" specularExponent="40" lighting-color="#ffffff" result="specOut">
-                                <fePointLight x="-5000" y="-10000" z="15000"/>
+                            <feSpecularLighting in="blur" surfaceScale="12" specularConstant="1.5" specularExponent="50" lighting-color="#ffffff" result="specOut">
+                                <fePointLight x="-5000" y="-10000" z="10000" />
                             </feSpecularLighting>
-                            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specChar"/>
-                            <feComposite in="distorted" in2="specChar" operator="over"/>
+                            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specChar" />
+                            
+                            <feTurbulence type="fractalNoise" baseFrequency="0.005" numOctaves="2" result="noise" />
+                            <feDisplacementMap in="SourceGraphic" in2="noise" scale="25" xChannelSelector="R" yChannelSelector="G" result="distorted" />
+                            
+                            <feComposite in="distorted" in2="specChar" operator="over" />
                         </filter>
                     </defs>
                     <g id="placed-polygons"></g><g id="sensor-layer"></g>
@@ -254,8 +249,7 @@
     async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function updateRaceDataToFirebase() {
         if (mode === 'race' && user && user.id !== ADMIN_ID) {
-            const totalNow = rawSeconds + penaltySeconds;
-            const currentFinishCount = currentNum - 1;
+            const totalNow = rawSeconds + penaltySeconds; const currentFinishCount = currentNum - 1;
             const updates = { currentProgress: currentNum, currentTotalTime: totalNow, currentPosErr, currentPropErr };
             if (currentNum > (user.progress || 1)) updates.progress = currentNum;
             await db.collection("players").doc(user.id).update(updates); Object.assign(user, updates);
@@ -301,18 +295,9 @@
     }
     async function triggerForceReload() { if(confirm("確定強制全員重整？")) { await db.collection("system").doc("config").set({ cmd: "FORCE_RELOAD", time: Date.now() }); alert("指令已發送"); setTimeout(()=>db.collection("system").doc("config").set({cmd:""}), 5000); } }
     async function editUser(id, name, pwd) { const newN = prompt("新姓名:", name), newP = prompt("新密碼:", pwd); if(newN && newP) { await db.collection("players").doc(id).update({name:newN, password:newP}); showAdmin(); } }
-    async function editRaceScore(id, name) {
-        const prog = prompt(`${name} 的目前進度 (1-36, 輸入0移除排行):`, 1), sec = prompt(`${name} 的目前秒數:`, 0);
-        if(prog !== null && sec !== null) {
-            const pNum = parseInt(prog); const d = { currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum };
-            await db.collection("players").doc(id).update(d);
-            if (pNum === 0) { await db.collection("leaderboard").doc(id).delete(); alert("已將該生從排行榜移除"); } 
-            else { await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() }); alert("戰績修改成功"); }
-            showAdmin();
-        }
-    }
-    async function clearFullRank() { if(confirm("確定清空所有排行榜紀錄？")) { const snap = await db.collection("leaderboard").get(); const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit(); alert("已清空"); showAdmin(); } }
-    async function deleteUser(id) { if(confirm("永久刪除該帳號？")) { await db.collection("players").doc(id).delete(); await db.collection("leaderboard").doc(id).delete(); showAdmin(); } }
+    async function editRaceScore(id, name) { const prog = prompt(`${name} 的目前進度 (1-36, 輸入0移除排行):`, 1), sec = prompt(`${name} 的目前秒數:`, 0); if(prog !== null && sec !== null) { const pNum = parseInt(prog); const d = { currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum }; await db.collection("players").doc(id).update(d); if (pNum === 0) { await db.collection("leaderboard").doc(id).delete(); alert("已從排行榜移除"); } else { await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() }); alert("修改成功"); } showAdmin(); } }
+    async function clearFullRank() { if(confirm("確定清空排行榜？")) { const snap = await db.collection("leaderboard").get(); const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit(); alert("已清空"); showAdmin(); } }
+    async function deleteUser(id) { if(confirm("永久刪除？")) { await db.collection("players").doc(id).delete(); await db.collection("leaderboard").doc(id).delete(); showAdmin(); } }
     function handleResize() { const wrapper = document.getElementById('game-wrapper'), outer = document.getElementById('game-wrapper-outer'); const ratio = Math.min((window.innerWidth < 1100 ? window.innerWidth - 30 : window.innerWidth - 370)/1000, (window.innerHeight - 100)/707, 0.95); wrapper.style.transform = `scale(${ratio})`; outer.style.width = (1000 * ratio) + "px"; outer.style.height = (707 * ratio) + "px"; }
     window.addEventListener('resize', handleResize); window.addEventListener('DOMContentLoaded', handleResize);
 
