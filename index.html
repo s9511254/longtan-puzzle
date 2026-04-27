@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V9.3 - 玻璃擬態終極版</title>
+    <title>龍潭大池拼圖系統 V9.0 - 防呆優化版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -21,20 +21,9 @@
         #svg-layer { position: absolute; top: 0; left: 0; width: 1000px; height: 707px; z-index: 100; }
         .target-poly { fill: rgba(255,255,255,0.01); cursor: pointer; transition: fill 0.2s ease; }
         .target-poly:hover { fill: rgba(0, 172, 193, 0.45); stroke: rgba(255,255,255,0.8); stroke-width: 2; }
+        /* 已完成區塊的 CSS 狀態 */
         .target-poly.finished { fill: transparent !important; stroke: none !important; cursor: default !important; pointer-events: none !important; }
         
-        /* 💡 V9.3 玻璃擬態核心樣式 */
-        .liquid-glass-polygon { 
-            fill: rgba(255, 255, 255, 0.15); 
-            stroke: rgba(255, 255, 255, 0.45); /* 模擬玻璃邊緣反光線 */
-            stroke-width: 1.2;
-            filter: url(#glassShineFilter); 
-            pointer-events: none; 
-            /* 關鍵：CSS 背景柔焦效果 */
-            backdrop-filter: blur(4px) saturate(160%) brightness(1.05);
-            -webkit-backdrop-filter: blur(4px) saturate(160%) brightness(1.05);
-        }
-
         #ans-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: bold; pointer-events: none; z-index: 1000; display: none; font-size: 14px; }
         #race-start-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; text-align: center; }
         .start-btn { padding: 25px 80px; font-size: 42px; background: var(--accent); color: white; border: none; border-radius: 60px; cursor: pointer; font-weight: bold; box-shadow: 0 0 30px var(--accent); animation: breathe 2s infinite ease-in-out; }
@@ -65,6 +54,7 @@
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
         .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 400px; }
         .victory-card { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border-radius: 30px; text-align: center; z-index: 30000; width: 520px; border: 8px solid var(--gold); }
+        .liquid-glass-polygon { fill: url(#liquidGradient); filter: url(#liquidRefraction); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1.5; pointer-events: none; }
         .flying-piece { position: absolute; z-index: 200; transition: all 0.6s; pointer-events: none; }
         .admin-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #eee; }
         .admin-tab-btn { padding: 10px 20px; border: none; background: #eee; cursor: pointer; border-radius: 10px 10px 0 0; font-weight: bold; }
@@ -83,7 +73,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V9.3</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V9.0</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -111,24 +101,15 @@
                     <div style="margin-top:40px; background:rgba(255,255,255,0.1); padding:20px; border-radius:20px; text-align:left; width:75%; line-height:1.8; font-size:16px;">
                         <b>📏 挑戰規則：</b><br>
                         1. 📍 點錯罰 10 秒；判錯性質罰 20 秒。<br>
-                        2. 🏆 採「擇優錄取」：保留最高戰績紀錄。
+                        2. 🏆 採「擇優錄取」：保留最高關卡與最短時間紀錄。
                     </div>
                 </div>
                 <div id="flash-overlay" style="position:absolute; width:100%; height:100%; z-index:200; pointer-events:none;"></div>
                 <img id="map-bg" src="bg00.jpg">
                 <svg id="svg-layer" viewBox="0 0 1000 707">
                     <defs>
-                        <filter id="glassShineFilter">
-                            <feGaussianBlur in="SourceAlpha" stdDeviation="0.5" result="blur" />
-                            <feSpecularLighting in="blur" surfaceScale="5" specularConstant="0.8" specularExponent="35" lighting-color="#ffffff" result="specOut">
-                                <fePointLight x="-1000" y="-1000" z="2000" />
-                            </feSpecularLighting>
-                            <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specIn" />
-                            <feMerge>
-                                <feMergeNode in="SourceGraphic" />
-                                <feMergeNode in="specIn" />
-                            </feMerge>
-                        </filter>
+                        <radialGradient id="liquidGradient" cx="50%" cy="50%" r="80%" fx="30%" fy="30%"><stop offset="0%" style="stop-color:#e0f7fa; stop-opacity:0.4" /><stop offset="100%" style="stop-color:#b2ebf2; stop-opacity:0.2" /></radialGradient>
+                        <filter id="liquidRefraction" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/><feSpecularLighting in="blur" surfaceScale="3" specularConstant="1" specularExponent="40" lighting-color="#ffffff" result="specOut"><fePointLight x="-5000" y="-10000" z="20000"/></feSpecularLighting><feComposite in="specOut" in2="SourceAlpha" operator="in" result="specChar"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="specChar"/></feMerge></filter>
                     </defs>
                     <g id="placed-polygons"></g><g id="sensor-layer"></g>
                 </svg>
@@ -144,11 +125,12 @@
             <h3 id="prog-text" style="margin: 10px 0; font-size:16px;">進度：1 / 36</h3>
             <div style="width:100%; height:8px; background:#e0e0e0; border-radius:4px; overflow:hidden;"><div id="progress-fill" style="width:0%; height:100%; background:var(--secondary); transition:0.3s;"></div></div>
             <div id="jump-control" style="background:#f1f8e9; padding:10px; border-radius:12px; margin-top:10px; display:none;">
+                <p style="margin:0 0 5px 0; font-size:12px; color:#558b2f;">⏭️ 跳轉關卡 (1-36):</p>
                 <div style="display:flex; gap:5px;"><input type="number" id="jump-num" min="1" max="36" style="flex:1; border-radius:5px; border:1px solid #999; text-align:center;"><button onclick="handleJump()" style="padding:2px 10px; background:#558b2f; color:white; border:none; border-radius:5px; cursor:pointer;">跳轉</button></div>
             </div>
             <div id="active-box" class="current-piece-box" onmouseenter="startFloatingZoom()" onmouseleave="stopFloatingZoom()" onmousemove="moveFloatingZoom(event)" onwheel="zoomFloatingZoom(event)"><img id="active-box-img" src=""></div>
             <div id="race-stats" style="display:none; background:#fff3e0; padding:10px; border-radius:10px; color:#e65100; font-size:14px; margin-bottom:10px;">⏱️ 用時：<span id="stat-time">00:00</span> (+<span id="stat-penalty">0</span>s)<br>❌ 點錯：<span id="stat-pos-err">0</span> | 判錯：<span id="stat-prop-err">0</span></div>
-            <div id="teacher-tools" style="display:none; margin:10px 0; padding:10px; background:#e3f2fd; border-radius:10px; font-size:14px;"><span>👁️ 顯示答案</span><input type="checkbox" id="ans-toggle" style="width:18px; height:18px; margin-left:10px; vertical-align:middle; cursor:pointer;"></div>
+            <div id="teacher-tools" class="toggle-switch" style="display:none;"><span>👁️ 顯示答案位置</span><input type="checkbox" id="ans-toggle" style="width:20px; height:20px; cursor:pointer;"></div>
             <button class="btn" style="background:var(--gold);" onclick="showRank()">🏆 全校排行榜</button>
             <button class="btn" style="background:#9e9e9e; color:white;" onclick="confirmRestartGame()">🔄 重新開始</button>
             <button class="btn" style="background:var(--danger); color:white;" onclick="backToModeSelect()">🏠 返回首頁</button>
@@ -178,25 +160,22 @@
 
     const SPEED_RANKS = [{t:200,n:"永恆傳說 ♾️"},{t:300,n:"極致傳說 💠"},{t:400,n:"神聖傳說 🌌"},{t:500,n:"無雙傳說 🐉"},{t:600,n:"最強傳說 II 🔱✨"},{t:700,n:"最強傳說 🔱"},{t:800,n:"戰場傳說 III 👑🔥"},{t:900,n:"戰場傳說 II 👑✨"},{t:1000,n:"戰場傳說 👑"},{t:1100,n:"至尊星耀 🌟"},{t:1200,n:"永恆鑽石 💎"},{t:1300,n:"堅韌鉑金 🟦"},{t:1400,n:"英勇黃金 🟨"},{t:1500,n:"秩序白銀 ⬜"},{t:9999,n:"基石青銅 🟫"}];
     const WILL_RANKS = ["龍潭守護神獸 🐉","恆星發光體 ☀️","榮耀守門人 🏯","幾何朝聖者 💎","狂熱鍛造家 🔥","磐石守護衛 ⛰️","堅毅求道者 📜","大池常駐師 🌲","晨曦修行者 🌿","幾何小幼苗 🌱"];
-    const POS_RANKS = ["萬物歸位者 📍","絕對領域者 📍","幾何狙擊手 📍","疾風神射手 📍","視覺導航員 📍","形狀觀察員 📍","幾何初學者 📍","尚未獲得"];
+    const POS_RANKS = ["萬物歸位者 📍","絕對領域者 📍","幾何狙擊手 📍","疾風神射射手 📍","視覺導航員 📍","形狀觀察員 📍","幾何初學者 📍","尚未獲得"];
     const PROP_RANKS = ["邏輯真理神 🧪","幾何賢者 🧪","邏輯執行官 🧪","幾何策士 🧪","推理分析師 🧪","邏輯小尖兵 🧪","性質實習生 🧪","尚未獲得"];
 
     function switchTab(t) { document.querySelectorAll('.tab-btn, .tab-content').forEach(e=>e.classList.remove('active')); document.getElementById(`btn-${t}`).classList.add('active'); document.getElementById(`tab-${t}`).classList.add('active'); }
     async function checkID() { const id = document.getElementById('login-id').value.trim(); if(!id) return; const doc = await db.collection("players").doc(id).get(); document.getElementById('step-id').style.display = 'none'; if (doc.exists) { user = { id, ...doc.data() }; document.getElementById('greet-user').innerText = `你好，${user.name}！`; document.getElementById('step-pwd').style.display = 'block'; setTimeout(()=>document.getElementById('login-pwd').focus(), 100); } else { document.getElementById('step-reg').style.display = 'block'; } }
-    
     async function handleLogin() {
         const pwd = document.getElementById('login-pwd').value;
         if ((user.id === ADMIN_ID && pwd === ADMIN_PWD) || pwd === user.password) {
-            if (user.id === ADMIN_ID) { document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='block'); user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; }
+            if (user.id === ADMIN_ID) { document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='block'); user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; user.neverGiveUp = true; }
             else { document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='none'); }
             document.getElementById('step-pwd').style.display = 'none'; document.getElementById('step-mode').style.display = 'block';
             sessionStart = Date.now(); refreshHonorUI(); startSessionMonitor(); startSystemCommandMonitor();
         } else alert("密碼錯誤");
     }
-
     function startSystemCommandMonitor() { db.collection("system").doc("config").onSnapshot(doc => { if(doc.exists && doc.data().cmd === "FORCE_RELOAD" && user.id !== ADMIN_ID) { location.reload(); } }); }
     function startSessionMonitor() { setInterval(async () => { if (!hasCounted && (Date.now() - sessionStart) > 300000) { hasCounted = true; const ref = db.collection("players").doc(user.id); await db.runTransaction(async (t) => { const d = await t.get(ref); const n = (d.data().willCount || 0) + 1; t.update(ref, { willCount: n }); user.willCount = n; }); refreshHonorUI(); } }, 15000); }
-    
     function refreshHonorUI() {
         document.getElementById('user-info-small').innerText = `👤 ${user.name}`;
         const bestTime = user.bestRaceTime || 9999;
@@ -207,42 +186,62 @@
         const pIdx = (user.bestPosErr === undefined) ? 7 : Math.min(6, Math.floor(user.bestPosErr / 3));
         const lIdx = (user.bestPropErr === undefined) ? 7 : Math.min(6, Math.floor(user.bestPropErr / 3));
         document.getElementById('rank-pos').innerText = POS_RANKS[pIdx]; document.getElementById('rank-prop').innerText = PROP_RANKS[lIdx];
-        const wCount = user.willCount || 0; document.getElementById('rank-will').innerText = `修行 ${wCount} 次`;
+        const wCount = user.willCount || 0; document.getElementById('rank-will').innerText = `修行 ${wCount} 次 / ${wCount >= 5 ? WILL_RANKS[9-Math.floor(wCount/5)]||'守護神' : '拼圖員'}`;
         const specWall = document.getElementById('medal-special-wall'); specWall.innerHTML = "";
-        WILL_RANKS.slice().reverse().forEach((name, i) => { const target = (i + 1) * 5; const m = document.createElement('div'); m.className = `medal-icon ${wCount >= target ? 'medal-active' : ''}`; m.innerText = name.split(' ').pop(); specWall.appendChild(m); });
+        WILL_RANKS.slice().reverse().forEach((name, i) => { const target = (i + 1) * 5; const m = document.createElement('div'); m.className = `medal-icon ${wCount >= target ? 'medal-active' : ''}`; m.innerText = name.split(' ').pop(); m.title = `${name} (修行滿 ${target} 次)`; specWall.appendChild(m); });
+        if (user.neverGiveUp) { const m = document.createElement('div'); m.className = "medal-icon medal-active never-give-up"; m.innerText = "🛡️"; specWall.appendChild(m); }
     }
+
+    const lens = document.getElementById('floating-zoom-lens');
+    const lensImg = document.getElementById('zoom-lens-img');
+    function startFloatingZoom() { const src = document.getElementById('active-box-img').src; if (!src || src.includes("piece00")) return; lensImg.src = src; lens.style.display = 'block'; updateLensSize(); }
+    function stopFloatingZoom() { lens.style.display = 'none'; }
+    function moveFloatingZoom(e) { lens.style.left = (e.clientX - 380) + 'px'; lens.style.top = (e.clientY - 150) + 'px'; }
+    function zoomFloatingZoom(e) { e.preventDefault(); if (e.deltaY < 0) zoomLevel = Math.min(6, zoomLevel + 0.2); else zoomLevel = Math.max(1.5, zoomLevel - 0.2); updateLensSize(); }
+    function updateLensSize() { lens.style.width = (150 * zoomLevel / 2) + 'px'; lens.style.height = (120 * zoomLevel / 2) + 'px'; }
 
     async function startGame(m) {
         mode = m; document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-container').style.display = 'flex';
         document.getElementById('jump-control').style.display = (mode === 'practice' || user.id === ADMIN_ID) ? 'block' : 'none';
-        if (mode === 'race') { document.getElementById('race-start-overlay').style.display = 'flex'; document.getElementById('race-stats').style.display = 'block'; currentNum = 1; restoreProgress(1); }
+        if (mode === 'race') { document.getElementById('race-start-overlay').style.display = 'flex'; document.getElementById('race-stats').style.display = 'block'; currentNum = 1; updateGameUI_Zero(); }
         else { document.getElementById('race-start-overlay').style.display = 'none'; document.getElementById('race-stats').style.display = 'none'; const doc = await db.collection("players").doc(user.id).get(); currentNum = (doc.exists && doc.data().progress <= 36) ? doc.data().progress : 1; }
         initGame(); switchTab('task');
     }
-
-    function beginRaceNow() { document.getElementById('race-start-overlay').style.display = 'none'; currentNum = 1; penaltySeconds = 0; rawSeconds = 0; currentPosErr = 0; currentPropErr = 0; startTime = Date.now(); if(raceTimer) clearInterval(raceTimer); raceTimer = setInterval(() => { rawSeconds = Math.floor((Date.now() - startTime) / 1000); document.getElementById('stat-time').innerText = `${Math.floor(rawSeconds/60).toString().padStart(2,'0')}:${(rawSeconds%60).toString().padStart(2,'0')}`; document.getElementById('stat-penalty').innerText = penaltySeconds; document.getElementById('stat-pos-err').innerText = currentPosErr; document.getElementById('stat-prop-err').innerText = currentPropErr; }, 1000); initGame(); }
-
+    function beginRaceNow() {
+        document.getElementById('race-start-overlay').style.display = 'none'; currentNum = 1; penaltySeconds = 0; rawSeconds = 0; currentPosErr = 0; currentPropErr = 0; startTime = Date.now();
+        if(raceTimer) clearInterval(raceTimer); raceTimer = setInterval(() => { rawSeconds = Math.floor((Date.now() - startTime) / 1000); document.getElementById('stat-time').innerText = `${Math.floor(rawSeconds/60).toString().padStart(2,'0')}:${(rawSeconds%60).toString().padStart(2,'0')}`; document.getElementById('stat-penalty').innerText = penaltySeconds; document.getElementById('stat-pos-err').innerText = currentPosErr; document.getElementById('stat-prop-err').innerText = currentPropErr; }, 1000); initGame();
+    }
+    
+    // 💡 V9.0 修改：處理放置後的區塊失效
     function processPlacement(tId) {
+        // 先檢查該區塊是否已經完成
         const poly = document.querySelector(`.target-poly[data-id="${tId}"]`);
         if (poly && poly.classList.contains('finished')) return;
+
         if (tId === currentNum.toString().padStart(2, '0')) {
-            openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
+            stopFloatingZoom(); openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
             const btns = document.getElementById('dialog-btns'); btns.innerHTML = "";
             ["SSS","SAS","ASA","AAS","RHS"].forEach(ans => {
                 const b = document.createElement('button'); b.className = "btn"; b.style.width="auto"; b.innerText = ans;
                 b.onclick = async () => {
-                    if (answers[tId].includes(ans)) { closeModal(); if (poly) poly.classList.add('finished'); playAnimate(tId); }
-                    else { currentPropErr++; triggerErrorFlash(20, (mode==='practice'?"性質判定錯誤，再想一下！":"性質判定錯誤！(+20s)")); await logDiagnostic(tId, "property", ans); updateRaceDataToFirebase(); }
+                    if (answers[tId].includes(ans)) { 
+                        closeModal(); 
+                        if (poly) poly.classList.add('finished'); // 💡 標記為已完成
+                        playAnimate(tId); 
+                    }
+                    else { currentPropErr++; const errText = (mode==='practice') ? "性質判斷好像有點誤會，再觀察一下三角形的條件喔！" : "性質判定錯誤！(+20s)"; triggerErrorFlash(20, errText); await logDiagnostic(tId, "property", ans); updateRaceDataToFirebase(); }
                 };
                 btns.appendChild(b);
             });
-            const cancel = document.createElement('button'); cancel.className = "btn"; cancel.style.width="100%"; cancel.style.background="#ccc"; cancel.innerText = "❌ 返回觀察"; cancel.onclick = closeModal; btns.appendChild(cancel);
+            const cancel = document.createElement('button'); cancel.className = "btn"; cancel.style.width="100%"; cancel.style.background="#ccc"; cancel.innerText = "❌ 返回觀察地圖"; cancel.onclick = closeModal; btns.appendChild(cancel);
         } else { currentPosErr++; triggerErrorFlash(10, ""); logDiagnostic(tId, "position", "wrong_pos"); updateRaceDataToFirebase(); }
     }
 
+    async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function updateRaceDataToFirebase() {
         if (mode === 'race' && user && user.id !== ADMIN_ID) {
-            const totalNow = rawSeconds + penaltySeconds; const currentFinishCount = currentNum - 1;
+            const totalNow = rawSeconds + penaltySeconds;
+            const currentFinishCount = currentNum - 1;
             const updates = { currentProgress: currentNum, currentTotalTime: totalNow, currentPosErr, currentPropErr };
             if (currentNum > (user.progress || 1)) updates.progress = currentNum;
             await db.collection("players").doc(user.id).update(updates); Object.assign(user, updates);
@@ -252,50 +251,48 @@
             if (shouldUpdate) await lbRef.set({ id: user.id, name: user.name, total: totalNow, progress: currentFinishCount, time: firebase.firestore.FieldValue.serverTimestamp() });
         }
     }
-
     async function finishGame() {
         if (mode === 'race') { clearInterval(raceTimer); const total = rawSeconds + penaltySeconds; const updates = { lastRaceTime: total, progress: 36 }; if (!user.bestRaceTime || total < user.bestRaceTime) updates.bestRaceTime = total; if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true; await db.collection("players").doc(user.id).update(updates); const lbRef = db.collection("leaderboard").doc(user.id); const lbDoc = await lbRef.get(); if (!lbDoc.exists || lbDoc.data().progress < 36 || (lbDoc.data().progress === 36 && total < lbDoc.data().total)) { await lbRef.set({ id: user.id, name: user.name, total, progress: 36, time: firebase.firestore.FieldValue.serverTimestamp() }); } Object.assign(user, updates); refreshHonorUI(); document.getElementById('final-total-score').innerText = total; document.getElementById('victory-modal').style.display = 'block'; confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
-        else { document.getElementById('prog-text').innerText = `36 / 36 (完成!)`; document.getElementById('progress-fill').style.width = "100%"; confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } }); }
+        else { document.getElementById('prog-text').innerText = `36 / 36 (完成!)`; document.getElementById('progress-fill').style.width = "100%"; document.getElementById('active-box').innerHTML = `<div style="color:var(--primary); font-weight:bold; font-size:18px;">🌟 完成挑戰！</div>`; confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } }); }
     }
-
-    const lens = document.getElementById('floating-zoom-lens'), lensImg = document.getElementById('zoom-lens-img');
-    function startFloatingZoom() { const src = document.getElementById('active-box-img').src; if (!src || src.includes("piece00")) return; lensImg.src = src; lens.style.display = 'block'; updateLensSize(); }
-    function stopFloatingZoom() { lens.style.display = 'none'; }
-    function moveFloatingZoom(e) { lens.style.left = (e.clientX - 380) + 'px'; lens.style.top = (e.clientY - 150) + 'px'; }
-    function zoomFloatingZoom(e) { e.preventDefault(); if (e.deltaY < 0) zoomLevel = Math.min(6, zoomLevel + 0.2); else zoomLevel = Math.max(1.5, zoomLevel - 0.2); updateLensSize(); }
-    function updateLensSize() { lens.style.width = (150 * zoomLevel / 2) + 'px'; lens.style.height = (120 * zoomLevel / 2) + 'px'; }
 
     function handleGlobalKeydown(e) { if (e.key === 'Escape') closeModal(); }
     function closeOnOverlayClick(e) { if (e.target.id === 'modal-overlay') closeModal(); }
     function initGame() { restoreProgress(currentNum); initAllSensors(); updateGame(); handleResize(); }
+    function updateGameUI_Zero() { document.getElementById('prog-text').innerText = `進度：1 / 36`; document.getElementById('progress-fill').style.width = "0%"; document.getElementById('active-box-img').src = "piece01.png"; document.getElementById('placed-polygons').innerHTML = ""; document.getElementById('map-bg').src = "bg00.jpg"; }
     function handleJump() { const num = parseInt(document.getElementById('jump-num').value); if (num >= 1 && num <= 36) { currentNum = num; initGame(); } }
     function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.getElementById('custom-dialog').style.display = 'none'; }
-    function openCustomDialog({ title, msg = "" }) { const modal = document.getElementById('modal-overlay'), dialog = document.getElementById('custom-dialog'), content = document.getElementById('admin-content'); document.getElementById('dialog-title').innerText = title; document.getElementById('dialog-msg').innerText = msg; content.style.display = 'none'; modal.style.display = 'block'; dialog.style.display = 'block'; }
+    function openCustomDialog({ title, msg = "" }) { const modal = document.getElementById('modal-overlay'), dialog = document.getElementById('custom-dialog'), content = document.getElementById('admin-content'), btns = document.getElementById('dialog-btns'); document.getElementById('dialog-title').innerText = title; document.getElementById('dialog-msg').innerText = msg; content.style.display = 'none'; btns.innerHTML = `<button class="btn" style="background:#ccc" onclick="closeModal()">關閉</button>`; modal.style.display = 'block'; dialog.style.display = 'block'; }
     function triggerErrorFlash(sec, msg) { if (mode === 'race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
     function backToModeSelect() { if(raceTimer) clearInterval(raceTimer); document.getElementById('main-container').style.display = 'none'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('step-mode').style.display = 'block'; setTimeout(()=>document.getElementById('login-id').focus(), 100); }
     function confirmRestartGame() { if(confirm("確定重來？")) { if(mode==='race') beginRaceNow(); else { currentNum=1; initGame(); } } }
-
-    function initAllSensors() {
-        const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = "";
-        Object.keys(triangleData).forEach(id => {
-            const pts = triangleData[id], poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-            poly.setAttribute("points", pts.map(p => `${p.x},${p.y * (707/750)}`).join(" "));
-            poly.setAttribute("class", "target-poly");
-            poly.setAttribute("data-id", id);
+    
+    // 💡 V9.0 修改：初始化偵測層時加上 data-id 以便後續搜尋與失效
+    function initAllSensors() { 
+        const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = ""; 
+        Object.keys(triangleData).forEach(id => { 
+            const pts = triangleData[id], poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); 
+            poly.setAttribute("points", pts.map(p => `${p.x},${p.y * (707/750)}`).join(" ")); 
+            poly.setAttribute("class", "target-poly"); 
+            poly.setAttribute("data-id", id); // 💡 重要：給予標籤 ID
+            
+            // 💡 如果是舊進度，初始化時直接設為 finished
             if (parseInt(id) < currentNum) poly.classList.add('finished');
-            poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); };
-            poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = 'block'; } };
-            poly.onmousemove = (e) => { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; };
-            poly.onmouseleave = () => tooltip.style.display = 'none';
-            layer.appendChild(poly);
-        });
+
+            poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); }; 
+            poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = poly.classList.contains('finished') ? 'none' : 'block'; } }; 
+            poly.onmousemove = (e) => { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; }; 
+            poly.onmouseleave = () => tooltip.style.display = 'none'; 
+            layer.appendChild(poly); 
+        }); 
     }
 
     function updateGame() { if (currentNum > 36) { finishGame(); return; } const id = currentNum.toString().padStart(2, '0'); document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; document.getElementById('active-box-img').src = `piece${id}.png`; }
     function playAnimate(id) { const pts = triangleData[id], cX = (pts[0].x+pts[1].x+pts[2].x)/3, cY = (pts[0].y+pts[1].y+pts[2].y)/3*(707/750); const img = document.createElement('img'); img.src = `piece${id}.png`; img.className='flying-piece'; img.style.left="80%"; img.style.top="50%"; img.style.width="200px"; document.getElementById('animation-layer').appendChild(img); setTimeout(() => { img.style.left=(cX-100)+"px"; img.style.top=(cY-100)+"px"; img.style.opacity="0"; setTimeout(() => { document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); else updateRaceDataToFirebase(); updateGame(); }, 650); }, 50); }
     function addPermanentGlaze(id) { const pts = triangleData[id]; if(!pts) return; const g = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); g.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" ")); g.setAttribute("class", "liquid-glass-polygon"); document.getElementById('placed-polygons').appendChild(g); }
     function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
-    async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
+    async function handleRegister() { const id = document.getElementById('login-id').value.trim(), name = document.getElementById('reg-name').value.trim(), pwd = document.getElementById('reg-pwd').value.trim(); if(!name || pwd.length<8) return alert("資料不全"); await db.collection("players").doc(id).set({ name, password: pwd, progress: 1, willCount: 0 }); location.reload(); }
+    async function showRank() { const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; }
 
     async function showAdmin() {
         const snapPlayers = await db.collection("players").get(); const snapAn = await db.collection("analytics").get(); const snapLe = await db.collection("leaderboard").get(); let players = [], analytics = [], attempts = {}; snapPlayers.forEach(d => players.push({id: d.id, ...d.data()})); snapAn.forEach(d => analytics.push(d.data())); snapLe.forEach(d => { attempts[d.progress] = (attempts[d.progress]||0) + 1; });
@@ -310,16 +307,19 @@
     }
     async function triggerForceReload() { if(confirm("確定強制全員重整？")) { await db.collection("system").doc("config").set({ cmd: "FORCE_RELOAD", time: Date.now() }); alert("指令已發送"); setTimeout(()=>db.collection("system").doc("config").set({cmd:""}), 5000); } }
     async function editUser(id, name, pwd) { const newN = prompt("新姓名:", name), newP = prompt("新密碼:", pwd); if(newN && newP) { await db.collection("players").doc(id).update({name:newN, password:newP}); showAdmin(); } }
-    async function editRaceScore(id, name) { const prog = prompt(`${name} 的進度 (1-36, 0移除排行):`, 1), sec = prompt(`${name} 的秒數:`, 0); if(prog !== null && sec !== null) { const pNum = parseInt(prog); await db.collection("players").doc(id).update({ currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum }); if (pNum === 0) await db.collection("leaderboard").doc(id).delete(); else await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() }); showAdmin(); } }
-    async function clearFullRank() { if(confirm("確定清空排行榜？")) { const snap = await db.collection("leaderboard").get(); const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit(); showAdmin(); } }
-    async function deleteUser(id) { if(confirm("永久刪除該帳號？")) { await db.collection("players").doc(id).delete(); await db.collection("leaderboard").doc(id).delete(); showAdmin(); } }
-
-    async function showRank() { 
-        const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); 
-        let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; 
-        list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); 
-        openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; 
+    async function editRaceScore(id, name) {
+        const prog = prompt(`${name} 的目前進度 (1-36, 輸入0移除排行):`, 1), sec = prompt(`${name} 的目前秒數:`, 0);
+        if(prog !== null && sec !== null) {
+            const pNum = parseInt(prog);
+            const d = { currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum };
+            await db.collection("players").doc(id).update(d);
+            if (pNum === 0) { await db.collection("leaderboard").doc(id).delete(); alert("已將該生從排行榜移除"); } 
+            else { await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() }); alert("戰績修改成功"); }
+            showAdmin();
+        }
     }
+    async function clearFullRank() { if(confirm("確定清空所有排行榜紀錄？")) { const snap = await db.collection("leaderboard").get(); const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit(); alert("已清空"); showAdmin(); } }
+    async function deleteUser(id) { if(confirm("永久刪除該帳號？")) { await db.collection("players").doc(id).delete(); await db.collection("leaderboard").doc(id).delete(); showAdmin(); } }
 
     function handleResize() { const wrapper = document.getElementById('game-wrapper'), outer = document.getElementById('game-wrapper-outer'); const ratio = Math.min((window.innerWidth < 1100 ? window.innerWidth - 30 : window.innerWidth - 370)/1000, (window.innerHeight - 100)/707, 0.95); wrapper.style.transform = `scale(${ratio})`; outer.style.width = (1000 * ratio) + "px"; outer.style.height = (707 * ratio) + "px"; }
     window.addEventListener('resize', handleResize); window.addEventListener('DOMContentLoaded', handleResize);
