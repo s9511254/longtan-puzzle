@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V8.9 - 體驗極致版</title>
+    <title>龍潭大池拼圖系統 V9.0 - 防呆優化版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -21,6 +21,9 @@
         #svg-layer { position: absolute; top: 0; left: 0; width: 1000px; height: 707px; z-index: 100; }
         .target-poly { fill: rgba(255,255,255,0.01); cursor: pointer; transition: fill 0.2s ease; }
         .target-poly:hover { fill: rgba(0, 172, 193, 0.45); stroke: rgba(255,255,255,0.8); stroke-width: 2; }
+        /* 已完成區塊的 CSS 狀態 */
+        .target-poly.finished { fill: transparent !important; stroke: none !important; cursor: default !important; pointer-events: none !important; }
+        
         #ans-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: bold; pointer-events: none; z-index: 1000; display: none; font-size: 14px; }
         #race-start-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; text-align: center; }
         .start-btn { padding: 25px 80px; font-size: 42px; background: var(--accent); color: white; border: none; border-radius: 60px; cursor: pointer; font-weight: bold; box-shadow: 0 0 30px var(--accent); animation: breathe 2s infinite ease-in-out; }
@@ -70,7 +73,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V8.9</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V9.0</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -157,7 +160,7 @@
 
     const SPEED_RANKS = [{t:200,n:"永恆傳說 ♾️"},{t:300,n:"極致傳說 💠"},{t:400,n:"神聖傳說 🌌"},{t:500,n:"無雙傳說 🐉"},{t:600,n:"最強傳說 II 🔱✨"},{t:700,n:"最強傳說 🔱"},{t:800,n:"戰場傳說 III 👑🔥"},{t:900,n:"戰場傳說 II 👑✨"},{t:1000,n:"戰場傳說 👑"},{t:1100,n:"至尊星耀 🌟"},{t:1200,n:"永恆鑽石 💎"},{t:1300,n:"堅韌鉑金 🟦"},{t:1400,n:"英勇黃金 🟨"},{t:1500,n:"秩序白銀 ⬜"},{t:9999,n:"基石青銅 🟫"}];
     const WILL_RANKS = ["龍潭守護神獸 🐉","恆星發光體 ☀️","榮耀守門人 🏯","幾何朝聖者 💎","狂熱鍛造家 🔥","磐石守護衛 ⛰️","堅毅求道者 📜","大池常駐師 🌲","晨曦修行者 🌿","幾何小幼苗 🌱"];
-    const POS_RANKS = ["萬物歸位者 📍","絕對領域者 📍","幾何狙擊手 📍","疾風神射手 📍","視覺導航員 📍","形狀觀察員 📍","幾何初學者 📍","尚未獲得"];
+    const POS_RANKS = ["萬物歸位者 📍","絕對領域者 📍","幾何狙擊手 📍","疾風神射射手 📍","視覺導航員 📍","形狀觀察員 📍","幾何初學者 📍","尚未獲得"];
     const PROP_RANKS = ["邏輯真理神 🧪","幾何賢者 🧪","邏輯執行官 🧪","幾何策士 🧪","推理分析師 🧪","邏輯小尖兵 🧪","性質實習生 🧪","尚未獲得"];
 
     function switchTab(t) { document.querySelectorAll('.tab-btn, .tab-content').forEach(e=>e.classList.remove('active')); document.getElementById(`btn-${t}`).classList.add('active'); document.getElementById(`tab-${t}`).classList.add('active'); }
@@ -208,14 +211,24 @@
         document.getElementById('race-start-overlay').style.display = 'none'; currentNum = 1; penaltySeconds = 0; rawSeconds = 0; currentPosErr = 0; currentPropErr = 0; startTime = Date.now();
         if(raceTimer) clearInterval(raceTimer); raceTimer = setInterval(() => { rawSeconds = Math.floor((Date.now() - startTime) / 1000); document.getElementById('stat-time').innerText = `${Math.floor(rawSeconds/60).toString().padStart(2,'0')}:${(rawSeconds%60).toString().padStart(2,'0')}`; document.getElementById('stat-penalty').innerText = penaltySeconds; document.getElementById('stat-pos-err').innerText = currentPosErr; document.getElementById('stat-prop-err').innerText = currentPropErr; }, 1000); initGame();
     }
+    
+    // 💡 V9.0 修改：處理放置後的區塊失效
     function processPlacement(tId) {
+        // 先檢查該區塊是否已經完成
+        const poly = document.querySelector(`.target-poly[data-id="${tId}"]`);
+        if (poly && poly.classList.contains('finished')) return;
+
         if (tId === currentNum.toString().padStart(2, '0')) {
             stopFloatingZoom(); openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
             const btns = document.getElementById('dialog-btns'); btns.innerHTML = "";
             ["SSS","SAS","ASA","AAS","RHS"].forEach(ans => {
                 const b = document.createElement('button'); b.className = "btn"; b.style.width="auto"; b.innerText = ans;
                 b.onclick = async () => {
-                    if (answers[tId].includes(ans)) { closeModal(); playAnimate(tId); }
+                    if (answers[tId].includes(ans)) { 
+                        closeModal(); 
+                        if (poly) poly.classList.add('finished'); // 💡 標記為已完成
+                        playAnimate(tId); 
+                    }
                     else { currentPropErr++; const errText = (mode==='practice') ? "性質判斷好像有點誤會，再觀察一下三角形的條件喔！" : "性質判定錯誤！(+20s)"; triggerErrorFlash(20, errText); await logDiagnostic(tId, "property", ans); updateRaceDataToFirebase(); }
                 };
                 btns.appendChild(b);
@@ -223,6 +236,7 @@
             const cancel = document.createElement('button'); cancel.className = "btn"; cancel.style.width="100%"; cancel.style.background="#ccc"; cancel.innerText = "❌ 返回觀察地圖"; cancel.onclick = closeModal; btns.appendChild(cancel);
         } else { currentPosErr++; triggerErrorFlash(10, ""); logDiagnostic(tId, "position", "wrong_pos"); updateRaceDataToFirebase(); }
     }
+
     async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
     async function updateRaceDataToFirebase() {
         if (mode === 'race' && user && user.id !== ADMIN_ID) {
@@ -252,19 +266,33 @@
     function triggerErrorFlash(sec, msg) { if (mode === 'race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
     function backToModeSelect() { if(raceTimer) clearInterval(raceTimer); document.getElementById('main-container').style.display = 'none'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('step-mode').style.display = 'block'; setTimeout(()=>document.getElementById('login-id').focus(), 100); }
     function confirmRestartGame() { if(confirm("確定重來？")) { if(mode==='race') beginRaceNow(); else { currentNum=1; initGame(); } } }
-    function initAllSensors() { const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = ""; Object.keys(triangleData).forEach(id => { const pts = triangleData[id], poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); poly.setAttribute("points", pts.map(p => `${p.x},${p.y * (707/750)}`).join(" ")); poly.setAttribute("class", "target-poly"); poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); }; poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = 'block'; } }; poly.onmousemove = (e) => { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; }; poly.onmouseleave = () => tooltip.style.display = 'none'; layer.appendChild(poly); }); }
+    
+    // 💡 V9.0 修改：初始化偵測層時加上 data-id 以便後續搜尋與失效
+    function initAllSensors() { 
+        const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = ""; 
+        Object.keys(triangleData).forEach(id => { 
+            const pts = triangleData[id], poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); 
+            poly.setAttribute("points", pts.map(p => `${p.x},${p.y * (707/750)}`).join(" ")); 
+            poly.setAttribute("class", "target-poly"); 
+            poly.setAttribute("data-id", id); // 💡 重要：給予標籤 ID
+            
+            // 💡 如果是舊進度，初始化時直接設為 finished
+            if (parseInt(id) < currentNum) poly.classList.add('finished');
+
+            poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); }; 
+            poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = poly.classList.contains('finished') ? 'none' : 'block'; } }; 
+            poly.onmousemove = (e) => { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; }; 
+            poly.onmouseleave = () => tooltip.style.display = 'none'; 
+            layer.appendChild(poly); 
+        }); 
+    }
+
     function updateGame() { if (currentNum > 36) { finishGame(); return; } const id = currentNum.toString().padStart(2, '0'); document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; document.getElementById('active-box-img').src = `piece${id}.png`; }
     function playAnimate(id) { const pts = triangleData[id], cX = (pts[0].x+pts[1].x+pts[2].x)/3, cY = (pts[0].y+pts[1].y+pts[2].y)/3*(707/750); const img = document.createElement('img'); img.src = `piece${id}.png`; img.className='flying-piece'; img.style.left="80%"; img.style.top="50%"; img.style.width="200px"; document.getElementById('animation-layer').appendChild(img); setTimeout(() => { img.style.left=(cX-100)+"px"; img.style.top=(cY-100)+"px"; img.style.opacity="0"; setTimeout(() => { document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); else updateRaceDataToFirebase(); updateGame(); }, 650); }, 50); }
     function addPermanentGlaze(id) { const pts = triangleData[id]; if(!pts) return; const g = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); g.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" ")); g.setAttribute("class", "liquid-glass-polygon"); document.getElementById('placed-polygons').appendChild(g); }
     function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
     async function handleRegister() { const id = document.getElementById('login-id').value.trim(), name = document.getElementById('reg-name').value.trim(), pwd = document.getElementById('reg-pwd').value.trim(); if(!name || pwd.length<8) return alert("資料不全"); await db.collection("players").doc(id).set({ name, password: pwd, progress: 1, willCount: 0 }); location.reload(); }
-    
-    async function showRank() { 
-        const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); 
-        let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; 
-        list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); 
-        openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; 
-    }
+    async function showRank() { const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; }
 
     async function showAdmin() {
         const snapPlayers = await db.collection("players").get(); const snapAn = await db.collection("analytics").get(); const snapLe = await db.collection("leaderboard").get(); let players = [], analytics = [], attempts = {}; snapPlayers.forEach(d => players.push({id: d.id, ...d.data()})); snapAn.forEach(d => analytics.push(d.data())); snapLe.forEach(d => { attempts[d.progress] = (attempts[d.progress]||0) + 1; });
@@ -279,20 +307,14 @@
     }
     async function triggerForceReload() { if(confirm("確定強制全員重整？")) { await db.collection("system").doc("config").set({ cmd: "FORCE_RELOAD", time: Date.now() }); alert("指令已發送"); setTimeout(()=>db.collection("system").doc("config").set({cmd:""}), 5000); } }
     async function editUser(id, name, pwd) { const newN = prompt("新姓名:", name), newP = prompt("新密碼:", pwd); if(newN && newP) { await db.collection("players").doc(id).update({name:newN, password:newP}); showAdmin(); } }
-    // 💡 V8.9 修正：修改關卡為 0 時自動移除排行榜戰績
     async function editRaceScore(id, name) {
         const prog = prompt(`${name} 的目前進度 (1-36, 輸入0移除排行):`, 1), sec = prompt(`${name} 的目前秒數:`, 0);
         if(prog !== null && sec !== null) {
             const pNum = parseInt(prog);
             const d = { currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum };
             await db.collection("players").doc(id).update(d);
-            if (pNum === 0) {
-                await db.collection("leaderboard").doc(id).delete();
-                alert("已將該生從排行榜移除");
-            } else {
-                await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() });
-                alert("戰績修改成功");
-            }
+            if (pNum === 0) { await db.collection("leaderboard").doc(id).delete(); alert("已將該生從排行榜移除"); } 
+            else { await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() }); alert("戰績修改成功"); }
             showAdmin();
         }
     }
