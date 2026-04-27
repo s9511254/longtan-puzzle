@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V9.1 - 擬真玻璃強化版</title>
+    <title>龍潭大池拼圖系統 V9.2 - 質感跳躍版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -23,14 +23,15 @@
         .target-poly:hover { fill: rgba(0, 172, 193, 0.45); stroke: rgba(255,255,255,0.8); stroke-width: 2; }
         .target-poly.finished { fill: transparent !important; stroke: none !important; cursor: default !important; pointer-events: none !important; }
         
-        /* 💡 V9.1 擬真玻璃樣式強化 */
+        /* 💡 V9.2 重構玻璃外觀：Liquid Fused 2.0 */
         .liquid-glass-polygon { 
             fill: url(#liquidGradient); 
             filter: url(#liquidRefraction); 
-            stroke: rgba(255, 255, 255, 0.6); 
-            stroke-width: 1.2; 
+            stroke: rgba(255, 255, 255, 0.8); 
+            stroke-width: 1.5; 
             pointer-events: none; 
-            backdrop-filter: blur(2.5px) brightness(1.05); /* 核心折射感 */
+            /* 利用亮度和對比度模擬玻璃透視感 */
+            backdrop-filter: blur(4px) saturate(180%) brightness(1.1); 
         }
 
         #ans-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: bold; pointer-events: none; z-index: 1000; display: none; font-size: 14px; }
@@ -55,20 +56,19 @@
         .medal-wall { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
         .medal-icon { width: 32px; height: 32px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; opacity: 0.2; filter: grayscale(1); cursor: help; }
         .medal-active { opacity: 1; filter: grayscale(0); background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .never-give-up { animation: glow 1.5s infinite alternate; }
-        @keyframes glow { from { box-shadow: 0 0 2px var(--danger); } to { box-shadow: 0 0 10px var(--danger); } }
         .btn { padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 8px; font-size: 15px; transition: 0.2s; }
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 20000; backdrop-filter: blur(4px); }
         .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 24px; width: 650px; z-index: 20001; border: 6px solid var(--secondary); max-height: 85vh; overflow-y: auto; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
         .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 400px; }
         .victory-card { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border-radius: 30px; text-align: center; z-index: 30000; width: 520px; border: 8px solid var(--gold); }
+        .liquid-glass-polygon { fill: url(#liquidGradient); filter: url(#liquidRefraction); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1.5; pointer-events: none; }
         .flying-piece { position: absolute; z-index: 200; transition: all 0.6s; pointer-events: none; }
         .admin-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #eee; }
         .admin-tab-btn { padding: 10px 20px; border: none; background: #eee; cursor: pointer; border-radius: 10px 10px 0 0; font-weight: bold; }
         .admin-tab-btn.active { background: var(--secondary); color: white; }
         .admin-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .admin-table th { background: #f8f9fa; padding: 12px; border-bottom: 2px solid #dee2e6; font-size: 13px; }
+        .admin-table th { background: #f8f9fa; padding: 12px; border-bottom: 2px solid #dee2e6; }
         .admin-table td { padding: 8px; border-bottom: 1px solid #eee; text-align: center; font-size: 13px; }
         @media screen and (max-width: 1100px) { #main-container { flex-direction: column; } #mission-panel { width: 95%; height: auto; order: -1; } }
     </style>
@@ -81,7 +81,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V9.1</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V9.2</h2>
         <div id="step-id"><input type="text" id="login-id" maxlength="7" placeholder="學號" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus><button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button></div>
         <div id="step-pwd" style="display:none;"><p id="greet-user" style="font-weight:bold;"></p><input type="password" id="login-pwd" placeholder="密碼" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) handleLogin()"><button class="btn" style="background:var(--primary); color:white;" onclick="handleLogin()">進入系統</button></div>
         <div id="step-reg" style="display:none;"><p style="color:var(--danger); font-weight:bold;">註冊新帳號</p><input type="text" id="reg-name" placeholder="姓名" style="width:85%; padding:12px; margin-bottom:10px; text-align:center; border:2px solid #ddd; border-radius:10px;"><input type="password" id="reg-pwd" placeholder="密碼(至少8碼)" style="width:85%; padding:12px; margin-bottom:15px; text-align:center; border:2px solid #ddd; border-radius:10px;"><button class="btn" style="background:var(--primary); color:white;" onclick="handleRegister()">完成註冊</button></div>
@@ -102,25 +102,26 @@
                     <div style="margin-top:40px; background:rgba(255,255,255,0.1); padding:20px; border-radius:20px; text-align:left; width:75%; line-height:1.8; font-size:16px;">
                         <b>📏 挑戰規則：</b><br>
                         1. 📍 點錯罰 10 秒；判錯性質罰 20 秒。<br>
-                        2. 🏆 採「擇優錄取」：保留最高關卡與最短時間紀錄。
+                        2. 🏆 採「擇優錄取」：保留最高戰績。
                     </div>
                 </div>
                 <div id="flash-overlay" style="position:absolute; width:100%; height:100%; z-index:200; pointer-events:none;"></div>
                 <img id="map-bg" src="bg00.jpg">
                 <svg id="svg-layer" viewBox="0 0 1000 707">
                     <defs>
-                        <radialGradient id="liquidGradient" cx="45%" cy="45%" r="70%" fx="30%" fy="30%">
-                            <stop offset="0%" style="stop-color:#ffffff; stop-opacity:0.35" />
-                            <stop offset="60%" style="stop-color:#b2ebf2; stop-opacity:0.1" />
-                            <stop offset="100%" style="stop-color:#00acc1; stop-opacity:0.25" />
+                        <radialGradient id="liquidGradient" cx="35%" cy="35%" r="70%" fx="20%" fy="20%">
+                            <stop offset="0%" style="stop-color:#ffffff; stop-opacity:0.5" />
+                            <stop offset="30%" style="stop-color:#e0f7fa; stop-opacity:0.15" />
+                            <stop offset="100%" style="stop-color:#00acc1; stop-opacity:0.35" />
                         </radialGradient>
-                        <filter id="liquidRefraction" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur in="SourceAlpha" stdDeviation="1.5" result="blur"/>
-                            <feSpecularLighting in="blur" surfaceScale="5" specularConstant="1.2" specularExponent="35" lighting-color="#ffffff" result="specOut">
-                                <fePointLight x="-5000" y="-10000" z="15000"/>
+                        <filter id="liquidRefraction" x="-40%" y="-40%" width="180%" height="180%">
+                            <feGaussianBlur in="SourceAlpha" stdDeviation="1.2" result="blur"/>
+                            <feSpecularLighting in="blur" surfaceScale="7" specularConstant="1.5" specularExponent="45" lighting-color="#ffffff" result="specOut">
+                                <fePointLight x="-5000" y="-10000" z="10000"/>
                             </feSpecularLighting>
                             <feComposite in="specOut" in2="SourceAlpha" operator="in" result="specChar"/>
-                            <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="specChar"/></feMerge>
+                            <feMorphology operator="dilate" radius="0.5" in="SourceAlpha" result="dilated"/>
+                            <feComposite in="SourceGraphic" in2="specChar" operator="over"/>
                         </filter>
                     </defs>
                     <g id="placed-polygons"></g><g id="sensor-layer"></g>
