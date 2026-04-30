@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V9.6 - 註冊邏輯強化與資源預載版</title>
+    <title>龍潭大池拼圖系統 V9.7 - 即時攔截邏輯優化版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -22,25 +22,21 @@
         .target-poly { fill: rgba(255,255,255,0.01); cursor: pointer; transition: fill 0.2s ease; }
         .target-poly:hover { fill: rgba(0, 172, 193, 0.45); stroke: rgba(255,255,255,0.8); stroke-width: 2; }
         .target-poly.finished { fill: transparent !important; stroke: none !important; cursor: default !important; pointer-events: none !important; }
-        
         .liquid-glass-polygon { fill: url(#liquidGradient); filter: url(#liquidRefraction); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1.5; pointer-events: none; }
         #ans-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: bold; pointer-events: none; z-index: 1000; display: none; font-size: 14px; }
         #race-start-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; text-align: center; }
         .start-btn { padding: 25px 80px; font-size: 42px; background: var(--accent); color: white; border: none; border-radius: 60px; cursor: pointer; font-weight: bold; box-shadow: 0 0 30px var(--accent); animation: breathe 2s infinite ease-in-out; }
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        
         #mission-panel { width: 340px; background: #fff; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0; display: flex; flex-direction: column; height: 707px; position: relative; }
         .tab-header { display: flex; background: #f5f5f5; border-bottom: 1px solid #ddd; border-radius: 20px 20px 0 0; overflow: hidden; }
         .tab-btn { flex: 1; padding: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; color: #666; transition: 0.3s; background: transparent; }
         .tab-btn.active { background: white; color: var(--primary); border-top: 4px solid var(--primary); }
         .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; position: relative; }
         .tab-content.active { display: block; }
-        
         .current-piece-box { width: 100%; height: 210px; margin: 10px 0; border: 3px solid var(--accent); border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; position: relative; cursor: zoom-in; }
         #active-box-img { max-width: 190px; max-height: 190px; }
         #floating-zoom-lens { position: fixed; display: none; pointer-events: none; z-index: 100000; background: white; border: 4px solid var(--accent); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); padding: 10px; overflow: hidden; }
         #floating-zoom-lens img { width: 100%; height: 100%; object-fit: contain; }
-
         .achievement-card { background: #f9f9f9; border-radius: 12px; padding: 10px; margin: 8px 0; border-left: 5px solid var(--secondary); font-size: 13px; }
         .rank-badge { font-size: 18px; font-weight: bold; display: block; margin-top: 3px; color: var(--dark); }
         .medal-wall { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -72,7 +68,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V9.6</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V9.7</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號 (7位數字)" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -153,15 +149,8 @@
 <div id="custom-dialog" class="custom-dialog"><h2 id="dialog-title"></h2><p id="dialog-msg"></p><div id="admin-content" style="display:none; margin-top:15px;"></div><div id="dialog-btns" style="display:flex; justify-content:space-around; flex-wrap:wrap; gap:10px; margin-top:20px;"></div></div>
 
 <script>
-    // 💡 預載引擎：打開網頁立刻偷跑
-    function silentPreload() {
-        console.log("🧩 資源偷載中...確保拼圖流暢...");
-        for (let i = 1; i <= 36; i++) {
-            const id = i.toString().padStart(2, '0');
-            new Image().src = `piece${id}.png`;
-            new Image().src = `bg${id}.jpg`;
-        }
-    }
+    // 💡 預載引擎
+    function silentPreload() { for (let i = 1; i <= 36; i++) { const id = i.toString().padStart(2, '0'); new Image().src = `piece${id}.png`; new Image().src = `bg${id}.jpg`; } }
     document.addEventListener('DOMContentLoaded', () => { silentPreload(); handleResize(); });
 
     const firebaseConfig = { apiKey: "AIzaSyAxd1n_6-4KUDALQztN2_8cusSljWxq9mo", authDomain: "longtan-puzzle-system.firebaseapp.com", projectId: "longtan-puzzle-system", storageBucket: "longtan-puzzle-system.firebasestorage.app", messagingSenderId: "634507608403", appId: "1:634507608403:web:1c64d268316847004be1a6" };
@@ -179,28 +168,18 @@
 
     function switchTab(t) { document.querySelectorAll('.tab-btn, .tab-content').forEach(e=>e.classList.remove('active')); document.getElementById(`btn-${t}`).classList.add('active'); document.getElementById(`tab-${t}`).classList.add('active'); }
     
-    // 💡 註冊邏輯強化：學號(7位數字)、姓名(中英)、密碼(8碼)
-    async function handleRegister() {
-        const id = document.getElementById('login-id').value.trim();
-        const name = document.getElementById('reg-name').value.trim();
-        const pwd = document.getElementById('reg-pwd').value.trim();
-        
-        const idRegex = /^\d{7}$/;
-        if (!idRegex.test(id)) return alert("註冊失敗：學號帳號必須是 7 位數字");
-
-        const nameRegex = /^[A-Za-z\u4e00-\u9fa5]+$/;
-        if (!nameRegex.test(name)) return alert("註冊失敗：請輸入中文或是英文姓名");
-
-        if (pwd.length < 8) return alert("註冊失敗：密碼長度至少需為 8 碼");
-        
-        await db.collection("players").doc(id).set({ name, password: pwd, progress: 1, willCount: 0 });
-        alert("註冊成功！系統將重新載入。");
-        location.reload();
-    }
-
+    // 💡 邏輯修正：第一關按下一步就攔截
     async function checkID() { 
         const id = document.getElementById('login-id').value.trim(); 
         if(!id) return; 
+
+        // [攔截邏輯]：按下一步時，如果不是 7 位數字，立刻擋掉
+        const idRegex = /^\d{7}$/;
+        if (!idRegex.test(id)) {
+            alert("攔截：學號帳號必須是 7 位數字學號");
+            return;
+        }
+
         const doc = await db.collection("players").doc(id).get(); 
         document.getElementById('step-id').style.display = 'none'; 
         if (doc.exists) { 
@@ -211,6 +190,21 @@
         } else { 
             document.getElementById('step-reg').style.display = 'block'; 
         } 
+    }
+
+    async function handleRegister() {
+        const id = document.getElementById('login-id').value.trim();
+        const name = document.getElementById('reg-name').value.trim();
+        const pwd = document.getElementById('reg-pwd').value.trim();
+        
+        // 保留雙重校驗
+        if (!/^\d{7}$/.test(id)) return alert("註冊失敗：學號帳號必須是 7 位數字");
+        if (!/^[A-Za-z\u4e00-\u9fa5]+$/.test(name)) return alert("註冊失敗：請輸入中文或是英文姓名");
+        if (pwd.length < 8) return alert("註冊失敗：密碼長度至少需為 8 碼");
+        
+        await db.collection("players").doc(id).set({ name, password: pwd, progress: 1, willCount: 0 });
+        alert("註冊成功！系統將重新載入。");
+        location.reload();
     }
 
     async function handleLogin() {
@@ -301,7 +295,6 @@
     function triggerErrorFlash(sec, msg) { if (mode === 'race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
     function backToModeSelect() { if(raceTimer) clearInterval(raceTimer); document.getElementById('main-container').style.display = 'none'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('step-mode').style.display = 'block'; setTimeout(()=>document.getElementById('login-id').focus(), 100); }
     function confirmRestartGame() { if(confirm("確定重來？")) { if(mode==='race') beginRaceNow(); else { currentNum=1; initGame(); } } }
-
     function initAllSensors() {
         const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = "";
         Object.keys(triangleData).forEach(id => {
@@ -317,14 +310,11 @@
             layer.appendChild(poly);
         });
     }
-
     function updateGame() { if (currentNum > 36) { finishGame(); return; } const id = currentNum.toString().padStart(2, '0'); document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; document.getElementById('active-box-img').src = `piece${id}.png`; }
     function playAnimate(id) { const pts = triangleData[id], cX = (pts[0].x+pts[1].x+pts[2].x)/3, cY = (pts[0].y+pts[1].y+pts[2].y)/3*(707/750); const img = document.createElement('img'); img.src = `piece${id}.png`; img.className='flying-piece'; img.style.left="80%"; img.style.top="50%"; img.style.width="200px"; document.getElementById('animation-layer').appendChild(img); setTimeout(() => { img.style.left=(cX-100)+"px"; img.style.top=(cY-100)+"px"; img.style.opacity="0"; setTimeout(() => { document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); else updateRaceDataToFirebase(); updateGame(); }, 650); }, 50); }
     function addPermanentGlaze(id) { const pts = triangleData[id]; if(!pts) return; const g = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); g.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" ")); g.setAttribute("class", "liquid-glass-polygon"); document.getElementById('placed-polygons').appendChild(g); }
     function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
     async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
-
-    // --- 管理後台 ---
     async function showAdmin() {
         const snapPlayers = await db.collection("players").get(); const snapAn = await db.collection("analytics").get(); const snapLe = await db.collection("leaderboard").get(); let players = [], analytics = [], attempts = {}; snapPlayers.forEach(d => players.push({id: d.id, ...d.data()})); snapAn.forEach(d => analytics.push(d.data())); snapLe.forEach(d => { attempts[d.progress] = (attempts[d.progress]||0) + 1; });
         const renderAdminTab = (tab) => {
@@ -341,20 +331,13 @@
     async function editRaceScore(id, name) { const prog = prompt(`${name} 的進度 (1-36, 0移除排行):`, 1), sec = prompt(`${name} 的秒數:`, 0); if(prog !== null && sec !== null) { const pNum = parseInt(prog); await db.collection("players").doc(id).update({ currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum }); if (pNum === 0) await db.collection("leaderboard").doc(id).delete(); else await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() }); showAdmin(); } }
     async function clearFullRank() { if(confirm("確定清空排行榜？")) { const snap = await db.collection("leaderboard").get(); const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit(); showAdmin(); } }
     async function deleteUser(id) { if(confirm("永久刪除該帳號？")) { await db.collection("players").doc(id).delete(); await db.collection("leaderboard").doc(id).delete(); showAdmin(); } }
-    
-    async function showRank() { 
-        const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); 
-        let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; 
-        list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); 
-        openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; 
-    }
-
+    async function showRank() { const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; }
     function handleResize() { const wrapper = document.getElementById('game-wrapper'), outer = document.getElementById('game-wrapper-outer'); const ratio = Math.min((window.innerWidth < 1100 ? window.innerWidth - 30 : window.innerWidth - 370)/1000, (window.innerHeight - 100)/707, 0.95); wrapper.style.transform = `scale(${ratio})`; outer.style.width = (1000 * ratio) + "px"; outer.style.height = (707 * ratio) + "px"; }
     window.addEventListener('resize', handleResize);
 
     const triangleData = {"10":[{"x":623,"y":371},{"x":683,"y":248},{"x":850,"y":357}],"11":[{"x":539,"y":546},{"x":619,"y":379},{"x":718,"y":540}],"12":[{"x":668,"y":448},{"x":926,"y":505},{"x":771,"y":615}],"13":[{"x":384,"y":450},{"x":593,"y":419},{"x":533,"y":546}],"14":[{"x":380,"y":453},{"x":526,"y":550},{"x":373,"y":642}],"15":[{"x":245,"y":362},{"x":372,"y":449},{"x":302,"y":550}],"16":[{"x":56,"y":263},{"x":163,"y":482},{"x":51,"y":671}],"17":[{"x":61,"y":256},{"x":435,"y":36},{"x":278,"y":221}],"18":[{"x":240,"y":367},{"x":298,"y":551},{"x":140,"y":531}],"19":[{"x":690,"y":244},{"x":956,"y":178},{"x":857,"y":355}],"20":[{"x":861,"y":360},{"x":960,"y":184},{"x":930,"y":495}],"21":[{"x":321,"y":228},{"x":373,"y":442},{"x":245,"y":357}],"22":[{"x":536,"y":553},{"x":712,"y":544},{"x":557,"y":699}],"23":[{"x":290,"y":578},{"x":374,"y":457},{"x":367,"y":639}],"24":[{"x":624,"y":376},{"x":734,"y":370},{"x":664,"y":440}],"25":[{"x":746,"y":368},{"x":856,"y":362},{"x":842,"y":478}],"26":[{"x":641,"y":77},{"x":878,"y":40},{"x":747,"y":196}],"27":[{"x":377,"y":647},{"x":531,"y":555},{"x":552,"y":704}],"28":[{"x":141,"y":538},{"x":296,"y":558},{"x":195,"y":701}],"29":[{"x":742,"y":369},{"x":836,"y":481},{"x":668,"y":444}],"30":[{"x":136,"y":539},{"x":187,"y":702},{"x":55,"y":677}],"31":[{"x":860,"y":367},{"x":925,"y":500},{"x":848,"y":482}],"32":[{"x":286,"y":583},{"x":365,"y":644},{"x":199,"y":703}],"33":[{"x":751,"y":199},{"x":879,"y":46},{"x":830,"y":203}],"34":[{"x":886,"y":42},{"x":957,"y":171},{"x":836,"y":202}],"35":[{"x":723,"y":544},{"x":784,"y":647},{"x":564,"y":701}],"36":[{"x":58,"y":259},{"x":317,"y":222},{"x":167,"y":477}],"01":[{"x":493,"y":195},{"x":815,"y":207},{"x":490,"y":287}],"02":[{"x":492,"y":292},{"x":676,"y":248},{"x":598,"y":411}],"03":[{"x":491,"y":297},{"x":593,"y":413},{"x":509,"y":426}],"04":[{"x":383,"y":444},{"x":488,"y":297},{"x":504,"y":426}],"05":[{"x":327,"y":224},{"x":485,"y":291},{"x":378,"y":442}],"06":[{"x":331,"y":220},{"x":489,"y":196},{"x":487,"y":287}],"07":[{"x":494,"y":193},{"x":634,"y":77},{"x":742,"y":199}],"08":[{"x":444,"y":35},{"x":626,"y":77},{"x":493,"y":190}],"09":[{"x":442,"y":35},{"x":488,"y":192},{"x":283,"y":221}]};
     
-    // 💡 已更新為您提供的最新答案集
+    // 💡 整合老師最新修改的答案集
     const answers = {"01":["ASA"],"02":["ASA","AAS"],"03":["SAS","SSS"],"04":["RHS","AAS","ASA"],"05":["SAS","ASA","AAS"],"06":["ASA","SAS","SSS","AAS"],"07":["SAS"],"08":["SSS"],"09":["ASA","SAS","AAS"],"10":["AAS"],"11":["SSS","AAS","ASA","SAS"],"12":["ASA","AAS","SAS","SSS","RHS"],"13":["ASA","AAS"],"14":["SAS","SSS","ASA","AAS"],"15":["ASA","SAS","AAS"],"16":["ASA"],"17":["ASA"],"18":["ASA","AAS"],"19":["ASA","AAS"],"20":["ASA"],"21":["SSS","SAS","RHS","AAS","ASA"],"22":["ASA","AAS"],"23":["ASA","AAS"],"24":["SAS"],"25":["SSS"],"26":["ASA"],"27":["AAS"],"28":["AAS"],"29":["SAS","ASA"],"30":["ASA"],"31":["ASA"],"32":["RHS"],"33":["ASA","AAS"],"34":["AAS"],"35":["SAS"],"36":["AAS","ASA"]};
 </script>
 </body>
