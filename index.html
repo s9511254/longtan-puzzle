@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V9.9 - 考古修復版</title>
+    <title>龍潭大池拼圖系統 V10.0 - 繪圖適配版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -22,21 +22,32 @@
         .target-poly { fill: rgba(255,255,255,0.01); cursor: pointer; transition: fill 0.2s ease; }
         .target-poly:hover { fill: rgba(0, 172, 193, 0.45); stroke: rgba(255,255,255,0.8); stroke-width: 2; }
         .target-poly.finished { fill: transparent !important; stroke: none !important; cursor: default !important; pointer-events: none !important; }
-        .liquid-glass-polygon { fill: url(#liquidGradient); filter: url(#liquidRefraction); stroke: rgba(255, 255, 255, 0.4); stroke-width: 1.5; pointer-events: none; }
+        
+        /* 💡 V10.0 修改：讓程式產生的遮罩變透明，以顯示老師親自繪製的地圖效果 */
+        .liquid-glass-polygon { 
+            fill: transparent; 
+            filter: none; 
+            stroke: none; 
+            pointer-events: none; 
+        }
+
         #ans-tooltip { position: absolute; background: rgba(0,0,0,0.85); color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: bold; pointer-events: none; z-index: 1000; display: none; font-size: 14px; }
         #race-start-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); z-index: 500; display: none; flex-direction: column; align-items: center; justify-content: center; color: white; padding: 20px; text-align: center; }
         .start-btn { padding: 25px 80px; font-size: 42px; background: var(--accent); color: white; border: none; border-radius: 60px; cursor: pointer; font-weight: bold; box-shadow: 0 0 30px var(--accent); animation: breathe 2s infinite ease-in-out; }
         @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        
         #mission-panel { width: 340px; background: #fff; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); flex-shrink: 0; display: flex; flex-direction: column; height: 707px; position: relative; }
         .tab-header { display: flex; background: #f5f5f5; border-bottom: 1px solid #ddd; border-radius: 20px 20px 0 0; overflow: hidden; }
         .tab-btn { flex: 1; padding: 15px; border: none; cursor: pointer; font-weight: bold; font-size: 16px; color: #666; transition: 0.3s; background: transparent; }
         .tab-btn.active { background: white; color: var(--primary); border-top: 4px solid var(--primary); }
         .tab-content { flex: 1; padding: 15px; overflow-y: auto; display: none; position: relative; }
         .tab-content.active { display: block; }
+        
         .current-piece-box { width: 100%; height: 210px; margin: 10px 0; border: 3px solid var(--accent); border-radius: 16px; background: #fff; display: flex; align-items: center; justify-content: center; position: relative; cursor: zoom-in; }
         #active-box-img { max-width: 190px; max-height: 190px; }
         #floating-zoom-lens { position: fixed; display: none; pointer-events: none; z-index: 100000; background: white; border: 4px solid var(--accent); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); padding: 10px; overflow: hidden; }
         #floating-zoom-lens img { width: 100%; height: 100%; object-fit: contain; }
+
         .achievement-card { background: #f9f9f9; border-radius: 12px; padding: 10px; margin: 8px 0; border-left: 5px solid var(--secondary); font-size: 13px; }
         .rank-badge { font-size: 18px; font-weight: bold; display: block; margin-top: 3px; color: var(--dark); }
         .medal-wall { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -68,7 +79,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V9.9</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.0</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號 (7位數字)" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -107,10 +118,6 @@
                 <div id="flash-overlay" style="position:absolute; width:100%; height:100%; z-index:200; pointer-events:none;"></div>
                 <img id="map-bg" src="bg00.jpg">
                 <svg id="svg-layer" viewBox="0 0 1000 707">
-                    <defs>
-                        <radialGradient id="liquidGradient" cx="50%" cy="50%" r="80%" fx="30%" fy="30%"><stop offset="0%" style="stop-color:#e0f7fa; stop-opacity:0.4" /><stop offset="100%" style="stop-color:#b2ebf2; stop-opacity:0.2" /></radialGradient>
-                        <filter id="liquidRefraction" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur in="SourceAlpha" stdDeviation="2" result="blur"/><feSpecularLighting in="blur" surfaceScale="3" specularConstant="1" specularExponent="40" lighting-color="#ffffff" result="specOut"><fePointLight x="-5000" y="-10000" z="20000"/></feSpecularLighting><feComposite in="specOut" in2="SourceAlpha" operator="in" result="specChar"/><feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="specChar"/></feMerge></filter>
-                    </defs>
                     <g id="placed-polygons"></g><g id="sensor-layer"></g>
                 </svg>
                 <div id="animation-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:150; pointer-events:none;"></div>
@@ -285,6 +292,7 @@
     function triggerErrorFlash(sec, msg) { if (mode === 'race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
     function backToModeSelect() { if(raceTimer) clearInterval(raceTimer); document.getElementById('main-container').style.display = 'none'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('step-mode').style.display = 'block'; setTimeout(()=>document.getElementById('login-id').focus(), 100); }
     function confirmRestartGame() { if(confirm("確定重來？")) { if(mode==='race') beginRaceNow(); else { currentNum=1; initGame(); } } }
+
     function initAllSensors() {
         const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = "";
         Object.keys(triangleData).forEach(id => {
@@ -300,6 +308,7 @@
             layer.appendChild(poly);
         });
     }
+
     function updateGame() { if (currentNum > 36) { finishGame(); return; } const id = currentNum.toString().padStart(2, '0'); document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; document.getElementById('active-box-img').src = `piece${id}.png`; }
     function playAnimate(id) { const pts = triangleData[id], cX = (pts[0].x+pts[1].x+pts[2].x)/3, cY = (pts[0].y+pts[1].y+pts[2].y)/3*(707/750); const img = document.createElement('img'); img.src = `piece${id}.png`; img.className='flying-piece'; img.style.left="80%"; img.style.top="50%"; img.style.width="200px"; document.getElementById('animation-layer').appendChild(img); setTimeout(() => { img.style.left=(cX-100)+"px"; img.style.top=(cY-100)+"px"; img.style.opacity="0"; setTimeout(() => { document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); else updateRaceDataToFirebase(); updateGame(); }, 650); }, 50); }
     function addPermanentGlaze(id) { const pts = triangleData[id]; if(!pts) return; const g = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); g.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" ")); g.setAttribute("class", "liquid-glass-polygon"); document.getElementById('placed-polygons').appendChild(g); }
@@ -312,7 +321,7 @@
         let players = [], analytics = [], leaderDict = {}; 
         snapPlayers.forEach(d => players.push({id: d.id, ...d.data()})); 
         snapAn.forEach(d => analytics.push(d.data()));
-        snapLe.forEach(d => { leaderDict[d.id] = d.data(); }); // 建立排行榜快速索引
+        snapLe.forEach(d => { leaderDict[d.id] = d.data(); }); 
         
         const renderAdminTab = (tab) => {
             let h = `<div class="admin-tabs"><button class="admin-tab-btn ${tab==='user'?'active':''}" onclick="renderAdminTab('user')">👤 帳號</button><button class="admin-tab-btn ${tab==='data'?'active':''}" onclick="renderAdminTab('data')">📊 數據</button><button class="admin-tab-btn ${tab==='diag'?'active':''}" onclick="renderAdminTab('diag')">🧠 診斷</button></div><div style="max-height:400px; overflow-y:auto; padding:10px;">`;
@@ -321,12 +330,10 @@
                 players.forEach(p => { 
                     if(p.id!==ADMIN_ID) {
                         let timeStr = "(舊帳號)";
-                        // 1. 如果有 createdAt 直接用
                         if (p.createdAt && p.createdAt.toDate) {
                             const d = p.createdAt.toDate();
                             timeStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
                         } 
-                        // 2. [考古補償]：如果 createdAt 沒數據，去排行榜找
                         else if (leaderDict[p.id] && leaderDict[p.id].time) {
                             const d = leaderDict[p.id].time.toDate();
                             timeStr = `📜 ${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`;
@@ -348,12 +355,7 @@
     async function editRaceScore(id, name) { const prog = prompt(`${name} 的進度 (1-36, 0移除排行):`, 1), sec = prompt(`${name} 的秒數:`, 0); if(prog !== null && sec !== null) { const pNum = parseInt(prog); await db.collection("players").doc(id).update({ currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum }); if (pNum === 0) await db.collection("leaderboard").doc(id).delete(); else await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() }); showAdmin(); } }
     async function clearFullRank() { if(confirm("確定清空排行榜？")) { const snap = await db.collection("leaderboard").get(); const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit(); showAdmin(); } }
     async function deleteUser(id) { if(confirm("永久刪除該帳號？")) { await db.collection("players").doc(id).delete(); await db.collection("leaderboard").doc(id).delete(); showAdmin(); } }
-    async function showRank() { 
-        const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); 
-        let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; 
-        list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); 
-        openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; 
-    }
+    async function showRank() { const snap = await db.collection("leaderboard").get(); let list = []; snap.forEach(doc => list.push(doc.data())); list.sort((a, b) => (b.progress !== a.progress) ? b.progress - a.progress : a.total - b.total); let h = "<table class='admin-table'><tr><th>名次</th><th>姓名</th><th>關卡</th><th>成績</th></tr>"; list.slice(0, 50).forEach((d, idx) => { h += "<tr><td>" + (idx+1) + "</td><td>" + d.name + "</td><td>" + d.progress + " 關</td><td><b>" + d.total + "s</b></td></tr>"; }); openCustomDialog({ title: "🏆 全校排行榜" }); const content = document.getElementById('admin-content'); content.style.display = 'block'; content.innerHTML = h + "</table>"; }
     function handleResize() { const wrapper = document.getElementById('game-wrapper'), outer = document.getElementById('game-wrapper-outer'); const ratio = Math.min((window.innerWidth < 1100 ? window.innerWidth - 30 : window.innerWidth - 370)/1000, (window.innerHeight - 100)/707, 0.95); wrapper.style.transform = `scale(${ratio})`; outer.style.width = (1000 * ratio) + "px"; outer.style.height = (707 * ratio) + "px"; }
     window.addEventListener('resize', handleResize);
 
