@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V10.3 - 純淨邏輯版</title>
+    <title>龍潭大池拼圖系統 V10.4 - 來源辨識版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -69,7 +69,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.3</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.4</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號 (7位數字)" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -197,10 +197,29 @@
         const pwd = document.getElementById('login-pwd').value;
         if ((user.id === ADMIN_ID && pwd === ADMIN_PWD) || pwd === user.password) {
             if (user.id === ADMIN_ID) { document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='block'); user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; user.neverGiveUp = true; }
-            else { document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='none'); }
+            else { 
+                document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='none');
+                // V10.4 新增：登入成功後抓取 IP 資訊
+                fetchLocationData(user.id);
+            }
             document.getElementById('step-pwd').style.display = 'none'; document.getElementById('step-mode').style.display = 'block';
             sessionStart = Date.now(); refreshHonorUI(); startSessionMonitor(); startSystemCommandMonitor();
         } else alert("密碼錯誤");
+    }
+
+    // V10.4 新增：定位辨識函數
+    async function fetchLocationData(userId) {
+        try {
+            const response = await fetch('http://ip-api.com/json');
+            const data = await response.json();
+            if (data.status === "success") {
+                await db.collection("players").doc(userId).update({
+                    lastLocation: `${data.city} ${data.district || ""}`,
+                    lastOrg: data.org || data.isp,
+                    lastIpTime: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        } catch (e) { console.log("定位抓取失敗，可能是廣告阻擋影響"); }
     }
 
     function startSystemCommandMonitor() { db.collection("system").doc("config").onSnapshot(doc => { if(doc.exists && doc.data().cmd === "FORCE_RELOAD" && user.id !== ADMIN_ID) { location.reload(); } }); }
@@ -247,7 +266,6 @@
         if (tId === currentNum.toString().padStart(2, '0')) {
             stopFloatingZoom(); openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
             const btns = document.getElementById('dialog-btns'); btns.innerHTML = "";
-            // 💡 SSA 加入判定流程，誘答用
             ["SSS","SAS","ASA","AAS","RHS","SSA"].forEach(ans => {
                 const b = document.createElement('button'); b.className = "btn"; b.style.width="auto"; b.innerText = ans;
                 b.onclick = async () => {
@@ -338,8 +356,15 @@
         const renderAdminTab = (tab) => {
             let h = `<div class="admin-tabs"><button class="admin-tab-btn ${tab==='user'?'active':''}" onclick="renderAdminTab('user')">👤 帳號</button><button class="admin-tab-btn ${tab==='data'?'active':''}" onclick="renderAdminTab('data')">📊 數據</button><button class="admin-tab-btn ${tab==='diag'?'active':''}" onclick="renderAdminTab('diag')">🧠 診斷</button></div><div style="max-height:400px; overflow-y:auto; padding:10px;">`;
             if(tab==='user'){ 
-                h += `<button class="btn" style="background:var(--danger); color:white; margin-bottom:15px;" onclick="triggerForceReload()">🚨 全員強制重整</button><table class="admin-table"><tr><th>學號</th><th>姓名</th><th>註冊時間</th><th>密碼</th><th>編輯</th><th>刪除</th></tr>`; 
-                players.forEach(p => { if(p.id!==ADMIN_ID) { let timeStr = "(舊帳號)"; if (p.createdAt && p.createdAt.toDate) { const d = p.createdAt.toDate(); timeStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`; } else if (leaderDict[p.id] && leaderDict[p.id].time) { const d = leaderDict[p.id].time.toDate(); timeStr = `📜 ${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`; } h += `<tr><td>${p.id}</td><td>${p.name}</td><td style="font-size:11px;color:#666;">${timeStr}</td><td>${p.password}</td><td><button onclick="editUser('${p.id}','${p.name}','${p.password}')">✏️</button></td><td><button onclick="deleteUser('${p.id}')" style="color:red">🗑️</button></td></tr>`; } }); h += `</table>`; 
+                h += `<button class="btn" style="background:var(--danger); color:white; margin-bottom:15px;" onclick="triggerForceReload()">🚨 全員強制重整</button><table class="admin-table"><tr><th>學號</th><th>姓名</th><th>最後連線來源</th><th>密碼</th><th>編輯</th><th>刪除</th></tr>`; 
+                players.forEach(p => { 
+                    if(p.id!==ADMIN_ID) { 
+                        // V10.4 修改：表格顯示來源
+                        const loc = p.lastLocation || "未偵測";
+                        const org = p.lastOrg ? `<br><small style="color:blue;">${p.lastOrg}</small>` : "";
+                        h += `<tr><td>${p.id}</td><td>${p.name}</td><td style="font-size:11px;color:#666;">${loc}${org}</td><td>${p.password}</td><td><button onclick="editUser('${p.id}','${p.name}','${p.password}')">✏️</button></td><td><button onclick="deleteUser('${p.id}')" style="color:red">🗑️</button></td></tr>`; 
+                    } 
+                }); h += `</table>`; 
             }
             else if(tab==='data'){ h += `<button class="btn" style="background:var(--gold); margin-bottom:10px;" onclick="clearFullRank()">🗑️ 清空全排行榜</button><table class="admin-table"><tr><th>姓名</th><th>進度(本/歷)</th><th>秒數</th><th>操作</th></tr>`; players.forEach(p => { if(p.id!==ADMIN_ID) h += `<tr><td>${p.name}</td><td>${p.currentProgress||0} / ${p.progress||1}</td><td>${p.currentTotalTime||0}s</td><td><button onclick="editRaceScore('${p.id}','${p.name}')">🔧 修改</button></td></tr>`; }); h += `</table>`; }
             else { let stageErrors = {}, propErrors = {}; analytics.forEach(a => { if(a.type==='position') stageErrors[a.questionId] = (stageErrors[a.questionId]||0)+1; if(a.type==='property') propErrors[a.value] = (propErrors[a.value]||0)+1; }); h += `<h3>🔥 魔王挑戰排名</h3>`; Object.entries(stageErrors).sort((a,b)=>b[1]-a[1]).slice(0,5).forEach(([id, c]) => h += `• 第 ${id} 關：平均點錯 ${(c/(Object.keys(leaderDict).length||1)).toFixed(1)} 次<br>`); h += `<h3>🧪 性質判定錯誤統計</h3>`; Object.entries(propErrors).sort((a,b)=>b[1]-a[1]).forEach(([p, c]) => h += `• ${p}判定失敗： ${c} 次<br>`); }
