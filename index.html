@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V10.4 - 來源辨識版</title>
+    <title>龍潭大池拼圖系統 V10.5 - 規則解鎖穩定版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -69,7 +69,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.4</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.5</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號 (7位數字)" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -199,7 +199,6 @@
             if (user.id === ADMIN_ID) { document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='block'); user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; user.neverGiveUp = true; }
             else { 
                 document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='none');
-                // V10.4 新增：登入成功後抓取 IP 資訊
                 fetchLocationData(user.id);
             }
             document.getElementById('step-pwd').style.display = 'none'; document.getElementById('step-mode').style.display = 'block';
@@ -207,19 +206,19 @@
         } else alert("密碼錯誤");
     }
 
-    // V10.4 新增：定位辨識函數
+    // 💡 V10.5 優化：升級為安全 https 連線，並加入 try/catch 防卡線機制
     async function fetchLocationData(userId) {
         try {
-            const response = await fetch('http://ip-api.com/json');
+            const response = await fetch('https://ipapi.co/json/');
             const data = await response.json();
-            if (data.status === "success") {
+            if (data && !data.error) {
                 await db.collection("players").doc(userId).update({
-                    lastLocation: `${data.city} ${data.district || ""}`,
-                    lastOrg: data.org || data.isp,
+                    lastLocation: `${data.city || ""} ${data.region || ""}`,
+                    lastOrg: data.org || "未知電信商",
                     lastIpTime: firebase.firestore.FieldValue.serverTimestamp()
                 });
             }
-        } catch (e) { console.log("定位抓取失敗，可能是廣告阻擋影響"); }
+        } catch (e) { console.log("連線定位略過，防止影響學生主流程。"); }
     }
 
     function startSystemCommandMonitor() { db.collection("system").doc("config").onSnapshot(doc => { if(doc.exists && doc.data().cmd === "FORCE_RELOAD" && user.id !== ADMIN_ID) { location.reload(); } }); }
@@ -248,9 +247,7 @@
     function updateLensSize() { lens.style.width = (150 * zoomLevel / 2) + 'px'; lens.style.height = (120 * zoomLevel / 2) + 'px'; }
 
     async function startGame(m) {
-        mode = m; 
-        document.getElementById('login-overlay').style.display = 'none'; 
-        document.getElementById('main-container').style.display = 'flex';
+        mode = m; document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-container').style.display = 'flex';
         document.getElementById('active-box').innerHTML = `<img id="active-box-img" src="">`;
         document.getElementById('jump-control').style.display = (mode === 'practice' || user.id === ADMIN_ID) ? 'block' : 'none';
         if (mode === 'race') { document.getElementById('race-start-overlay').style.display = 'flex'; document.getElementById('race-stats').style.display = 'block'; currentNum = 1; restoreProgress(1); }
@@ -330,7 +327,6 @@
     }
 
     function updateGame() { if (currentNum > 36) { finishGame(); return; } const id = currentNum.toString().padStart(2, '0'); document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; document.getElementById('active-box-img').src = `piece${id}.png`; }
-    
     function playAnimate(id) {
         const pts = triangleData[id], cX = (pts[0].x+pts[1].x+pts[2].x)/3, cY = (pts[0].y+pts[1].y+pts[2].y)/3*(707/750);
         const img = document.createElement('img'); img.src = `piece${id}.png`; img.className='flying-piece'; img.style.left="80%"; img.style.top="50%"; img.style.width="200px";
@@ -359,7 +355,6 @@
                 h += `<button class="btn" style="background:var(--danger); color:white; margin-bottom:15px;" onclick="triggerForceReload()">🚨 全員強制重整</button><table class="admin-table"><tr><th>學號</th><th>姓名</th><th>最後連線來源</th><th>密碼</th><th>編輯</th><th>刪除</th></tr>`; 
                 players.forEach(p => { 
                     if(p.id!==ADMIN_ID) { 
-                        // V10.4 修改：表格顯示來源
                         const loc = p.lastLocation || "未偵測";
                         const org = p.lastOrg ? `<br><small style="color:blue;">${p.lastOrg}</small>` : "";
                         h += `<tr><td>${p.id}</td><td>${p.name}</td><td style="font-size:11px;color:#666;">${loc}${org}</td><td>${p.password}</td><td><button onclick="editUser('${p.id}','${p.name}','${p.password}')">✏️</button></td><td><button onclick="deleteUser('${p.id}')" style="color:red">🗑️</button></td></tr>`; 
@@ -382,7 +377,6 @@
     window.addEventListener('resize', handleResize);
 
     const triangleData = {"10":[{"x":623,"y":371},{"x":683,"y":248},{"x":850,"y":357}],"11":[{"x":539,"y":546},{"x":619,"y":379},{"x":718,"y":540}],"12":[{"x":668,"y":448},{"x":926,"y":505},{"x":771,"y":615}],"13":[{"x":384,"y":450},{"x":593,"y":419},{"x":533,"y":546}],"14":[{"x":380,"y":453},{"x":526,"y":550},{"x":373,"y":642}],"15":[{"x":245,"y":362},{"x":372,"y":449},{"x":302,"y":550}],"16":[{"x":56,"y":263},{"x":163,"y":482},{"x":51,"y":671}],"17":[{"x":61,"y":256},{"x":435,"y":36},{"x":278,"y":221}],"18":[{"x":240,"y":367},{"x":298,"y":551},{"x":140,"y":531}],"19":[{"x":690,"y":244},{"x":956,"y":178},{"x":857,"y":355}],"20":[{"x":861,"y":360},{"x":960,"y":184},{"x":930,"y":495}],"21":[{"x":321,"y":228},{"x":373,"y":442},{"x":245,"y":357}],"22":[{"x":536,"y":553},{"x":712,"y":544},{"x":557,"y":699}],"23":[{"x":290,"y":578},{"x":374,"y":457},{"x":367,"y":639}],"24":[{"x":624,"y":376},{"x":734,"y":370},{"x":664,"y":440}],"25":[{"x":746,"y":368},{"x":856,"y":362},{"x":842,"y":478}],"26":[{"x":641,"y":77},{"x":878,"y":40},{"x":747,"y":196}],"27":[{"x":377,"y":647},{"x":531,"y":555},{"x":552,"y":704}],"28":[{"x":141,"y":538},{"x":296,"y":558},{"x":195,"y":701}],"29":[{"x":742,"y":369},{"x":836,"y":481},{"x":668,"y":444}],"30":[{"x":136,"y":539},{"x":187,"y":702},{"x":55,"y":677}],"31":[{"x":860,"y":367},{"x":925,"y":500},{"x":848,"y":482}],"32":[{"x":286,"y":583},{"x":365,"y":644},{"x":199,"y":703}],"33":[{"x":751,"y":199},{"x":879,"y":46},{"x":830,"y":203}],"34":[{"x":886,"y":42},{"x":957,"y":171},{"x":836,"y":202}],"35":[{"x":723,"y":544},{"x":784,"y":647},{"x":564,"y":701}],"36":[{"x":58,"y":259},{"x":317,"y":222},{"x":167,"y":477}],"01":[{"x":493,"y":195},{"x":815,"y":207},{"x":490,"y":287}],"02":[{"x":492,"y":292},{"x":676,"y":248},{"x":598,"y":411}],"03":[{"x":491,"y":297},{"x":593,"y":413},{"x":509,"y":426}],"04":[{"x":383,"y":444},{"x":488,"y":297},{"x":504,"y":426}],"05":[{"x":327,"y":224},{"x":485,"y":291},{"x":378,"y":442}],"06":[{"x":331,"y":220},{"x":489,"y":196},{"x":487,"y":287}],"07":[{"x":494,"y":193},{"x":634,"y":77},{"x":742,"y":199}],"08":[{"x":444,"y":35},{"x":626,"y":77},{"x":493,"y":190}],"09":[{"x":442,"y":35},{"x":488,"y":192},{"x":283,"y":221}]};
-    
     const answers = {"01":["ASA"],"02":["ASA","AAS"],"03":["SAS","SSS"],"04":["SSS","SAS","ASA","AAS","RHS"],"05":["SAS","ASA","AAS"],"06":["ASA","SAS","SSS","AAS"],"07":["SAS"],"08":["SSS"],"09":["ASA","SAS","AAS"],"10":["AAS"],"11":["SSS","AAS","ASA","SAS"],"12":["ASA","AAS","SAS","SSS","RHS"],"13":["ASA","AAS"],"14":["SAS","SSS","ASA","AAS"],"15":["ASA","SAS","AAS"],"16":["ASA"],"17":["ASA"],"18":["ASA","AAS"],"19":["ASA","AAS"],"20":["ASA"],"21":["SSS","SAS","RHS","AAS","ASA"],"22":["ASA","AAS"],"23":["ASA","AAS"],"24":["SAS"],"25":["SSS"],"26":["ASA"],"27":["AAS"],"28":["AAS"],"29":["SAS","ASA"],"30":["ASA"],"31":["ASA"],"32":["RHS"],"33":["ASA","AAS"],"34":["AAS"],"35":["SAS"],"36":["AAS","ASA"]};
 </script>
 </body>
