@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V10.5 - 規則解鎖穩定版</title>
+    <title>龍潭大池拼圖系統 V10.6 - 數據完全體版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -49,7 +49,7 @@
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 20000; backdrop-filter: blur(4px); }
         .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 24px; width: 650px; z-index: 20001; border: 6px solid var(--secondary); max-height: 85vh; overflow-y: auto; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 400px; }
+        .login-box { background: white; padding: 40px; border-radius: 20px; text-align: text-center; width: 400px; }
         .victory-card { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border-radius: 30px; text-align: center; z-index: 30000; width: 520px; border: 8px solid var(--gold); }
         .flying-piece { position: absolute; z-index: 200; transition: all 0.6s; pointer-events: none; }
         .admin-tabs { display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 2px solid #eee; }
@@ -69,7 +69,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.5</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.6</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號 (7位數字)" style="width:85%; padding:15px; margin-bottom:15px; text-align:center; font-size:18px; border:2px solid #ddd; border-radius:10px;" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white; font-size:18px;" onclick="checkID()">下一步</button>
@@ -206,7 +206,6 @@
         } else alert("密碼錯誤");
     }
 
-    // 💡 V10.5 優化：升級為安全 https 連線，並加入 try/catch 防卡線機制
     async function fetchLocationData(userId) {
         try {
             const response = await fetch('https://ipapi.co/json/');
@@ -288,7 +287,7 @@
     }
 
     async function finishGame() {
-        if (mode === 'race') { clearInterval(raceTimer); const total = rawSeconds + penaltySeconds; const updates = { lastRaceTime: total, progress: 36 }; if (!user.bestRaceTime || total < user.bestRaceTime) updates.bestRaceTime = total; if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true; await db.collection("players").doc(user.id).update(updates); const lbRef = db.collection("leaderboard").doc(user.id); const lbDoc = await lbRef.get(); if (!lbDoc.exists || lbDoc.data().progress < 36 || (lbDoc.data().progress === 36 && total < lbDoc.data().total)) { await lbRef.set({ id: user.id, name: user.name, total, progress: 36, time: firebase.firestore.FieldValue.serverTimestamp() }); } Object.assign(user, updates); refreshHonorUI(); document.getElementById('final-total-score').innerText = total; document.getElementById('victory-modal').style.display = 'block'; confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
+        if (mode === 'race') { clearInterval(raceTimer); const total = rawSeconds + penaltySeconds; const updates = { lastRaceTime: total, progress: 36 }; if (!user.bestRaceTime || total < user.bestRaceTime) updates.bestRaceTime = total; if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true; await db.collection("players").doc(user.id).update(updates); const lbRef = document.getElementById("leaderboard").doc(user.id); const lbDoc = await lbRef.get(); if (!lbDoc.exists || lbDoc.data().progress < 36 || (lbDoc.data().progress === 36 && total < lbDoc.data().total)) { await lbRef.set({ id: user.id, name: user.name, total, progress: 36, time: firebase.firestore.FieldValue.serverTimestamp() }); } Object.assign(user, updates); refreshHonorUI(); document.getElementById('final-total-score').innerText = total; document.getElementById('victory-modal').style.display = 'block'; confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } }); }
         else { document.getElementById('prog-text').innerText = `36 / 36 (完成!)`; document.getElementById('progress-fill').style.width = "100%"; document.getElementById('active-box').innerHTML = `<div style="color:var(--primary); font-weight:bold; font-size:18px;">🌟 完成挑戰！</div>`; confetti({ particleCount: 100, spread: 60, origin: { y: 0.7 } }); }
     }
 
@@ -345,6 +344,7 @@
     function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
     async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
 
+    // --- 管理後台核心修正：同時呈現註冊時間與最後連線來源 ---
     async function showAdmin() {
         const snapPlayers = await db.collection("players").get(); const snapAn = await db.collection("analytics").get(); const snapLe = await db.collection("leaderboard").get(); 
         let players = [], analytics = [], leaderDict = {}; 
@@ -352,12 +352,20 @@
         const renderAdminTab = (tab) => {
             let h = `<div class="admin-tabs"><button class="admin-tab-btn ${tab==='user'?'active':''}" onclick="renderAdminTab('user')">👤 帳號</button><button class="admin-tab-btn ${tab==='data'?'active':''}" onclick="renderAdminTab('data')">📊 數據</button><button class="admin-tab-btn ${tab==='diag'?'active':''}" onclick="renderAdminTab('diag')">🧠 診斷</button></div><div style="max-height:400px; overflow-y:auto; padding:10px;">`;
             if(tab==='user'){ 
-                h += `<button class="btn" style="background:var(--danger); color:white; margin-bottom:15px;" onclick="triggerForceReload()">🚨 全員強制重整</button><table class="admin-table"><tr><th>學號</th><th>姓名</th><th>最後連線來源</th><th>密碼</th><th>編輯</th><th>刪除</th></tr>`; 
+                // 💡 修正處：將「註冊時間」與「最後連線來源」欄位同時回歸並排
+                h += `<button class="btn" style="background:var(--danger); color:white; margin-bottom:15px;" onclick="triggerForceReload()">🚨 全員強制重整</button><table class="admin-table"><tr><th>學號</th><th>姓名</th><th>註冊時間</th><th>最後連線來源</th><th>密碼</th><th>編輯</th><th>刪除</th></tr>`; 
                 players.forEach(p => { 
                     if(p.id!==ADMIN_ID) { 
+                        // 1. 處理註冊時間考古
+                        let timeStr = "(舊帳號)";
+                        if (p.createdAt && p.createdAt.toDate) { const d = p.createdAt.toDate(); timeStr = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`; } 
+                        else if (leaderDict[p.id] && leaderDict[p.id].time) { const d = leaderDict[p.id].time.toDate(); timeStr = `📜 ${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')}`; }
+                        
+                        // 2. 處理連線定位來源
                         const loc = p.lastLocation || "未偵測";
                         const org = p.lastOrg ? `<br><small style="color:blue;">${p.lastOrg}</small>` : "";
-                        h += `<tr><td>${p.id}</td><td>${p.name}</td><td style="font-size:11px;color:#666;">${loc}${org}</td><td>${p.password}</td><td><button onclick="editUser('${p.id}','${p.name}','${p.password}')">✏️</button></td><td><button onclick="deleteUser('${p.id}')" style="color:red">🗑️</button></td></tr>`; 
+                        
+                        h += `<tr><td>${p.id}</td><td>${p.name}</td><td style="font-size:11px;color:#444;">${timeStr}</td><td style="font-size:11px;color:#666;">${loc}${org}</td><td>${p.password}</td><td><button onclick="editUser('${p.id}','${p.name}','${p.password}')">✏️</button></td><td><button onclick="deleteUser('${p.id}')" style="color:red">🗑️</button></td></tr>`; 
                     } 
                 }); h += `</table>`; 
             }
@@ -367,6 +375,7 @@
         };
         window.renderAdminTab = renderAdminTab; openCustomDialog({ title: "⚙️ 管理後台" }); document.getElementById('admin-content').style.display = 'block'; renderAdminTab('user');
     }
+
     async function triggerForceReload() { if(confirm("確定強制全員重整？")) { await db.collection("system").doc("config").set({ cmd: "FORCE_RELOAD", time: Date.now() }); alert("指令已發送"); setTimeout(()=>db.collection("system").doc("config").set({cmd:""}), 5000); } }
     async function editUser(id, name, pwd) { const newN = prompt("新姓名:", name), newP = prompt("新密碼:", pwd); if(newN && newP) { await db.collection("players").doc(id).update({name:newN, password:newP}); showAdmin(); } }
     async function editRaceScore(id, name) { const prog = prompt(`${name} 的進度 (1-36, 0移除排行):`, 1), sec = prompt(`${name} 的秒數:`, 0); if(prog !== null && sec !== null) { const pNum = parseInt(prog); await db.collection("players").doc(id).update({ currentProgress: pNum, currentTotalTime: parseInt(sec), progress: pNum }); if (pNum === 0) await db.collection("leaderboard").doc(id).delete(); else await db.collection("leaderboard").doc(id).set({ id, name, total: parseInt(sec), progress: pNum-1, time: firebase.firestore.FieldValue.serverTimestamp() }); showAdmin(); } }
