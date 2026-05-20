@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V10.11 - 語法終極淨化版</title>
+    <title>龍潭大池拼圖系統 V11.0 - 管理員專屬隨機測試版</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -56,6 +56,8 @@
         .login-box .btn { width: 100%; padding: 15px; font-size: 18px; margin-top: 5px; display: block; }
         #step-mode .btn { margin-bottom: 15px; font-size: 20px; padding: 18px; background: white; border: 3px solid var(--secondary); color: var(--secondary); }
         #admin-main-btn { background: #3f51b5 !important; color: white !important; }
+        /* V11.0 隨機測試按鈕款式 */
+        #admin-random-btn { background: #e65100 !important; border: 3px solid #ff9800 !important; color: white !important; }
         
         .victory-card { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 40px; border-radius: 30px; text-align: center; z-index: 30000; width: 520px; border: 8px solid var(--gold); }
         .flying-piece { position: absolute; z-index: 200; transition: all 0.6s; pointer-events: none; }
@@ -76,7 +78,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V10.11</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V11.0</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號 (7位數字)" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white;" onclick="checkID()">下一步</button>
@@ -92,7 +94,13 @@
             <input type="password" id="reg-pwd" placeholder="設定密碼 (至少8碼)">
             <button class="btn" style="background:var(--primary); color:white;" onclick="handleRegister()">完成註冊</button>
         </div>
-        <div id="step-mode" style="display:none;"><h3>模式選擇</h3><button class="btn" onclick="startGame('practice')">🏋️ 練習模式</button><button class="btn" onclick="startGame('race')">🏆 競賽模式</button><button id="admin-main-btn" class="btn" onclick="showAdmin()">⚙️ 管理後台</button></div>
+        <div id="step-mode" style="display:none;">
+            <h3>模式選擇</h3>
+            <button class="btn" onclick="startGame('practice')">🏋️ 練習模式</button>
+            <button class="btn" onclick="startGame('race')">🏆 競賽模式</button>
+            <button id="admin-random-btn" class="btn" style="display:none;" onclick="startGame('random_race')">🎲 管理員隨機競賽（演示測試）</button>
+            <button id="admin-main-btn" class="btn" onclick="showAdmin()">⚙️ 管理後台</button>
+        </div>
     </div>
 </div>
 
@@ -114,8 +122,15 @@
                 </div>
                 <div id="flash-overlay" style="position:absolute; width:100%; height:100%; z-index:200; pointer-events:none;"></div>
                 <img id="map-bg" src="bg00.jpg">
+                
                 <svg id="svg-layer" viewBox="0 0 1000 707">
-                    <g id="placed-polygons"></g><g id="sensor-layer"></g>
+                    <defs>
+                        <clipPath id="random-pool-mask"></clipPath>
+                    </defs>
+                    <image id="masked-full-bg" href="bg36.jpg" x="0" y="0" width="1000" height="707" clip-path="url(#random-pool-mask)" style="display:none;"></image>
+                    
+                    <g id="placed-polygons"></g>
+                    <g id="sensor-layer"></g>
                 </svg>
                 <div id="animation-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:150; pointer-events:none;"></div>
             </div>
@@ -164,6 +179,9 @@
     let currentPosErr = 0, currentPropErr = 0, sessionStart = 0, hasCounted = false, zoomLevel = 3.5;
     const ADMIN_ID = "9999999", ADMIN_PWD = "ji3g4xl3g ";
 
+    // V11.0 隨機模式核心控制變數
+    let randomOrderArray = []; 
+
     const SPEED_RANKS = [{t:200,n:"永恆傳說 ♾️"},{t:300,n:"極致傳說 💠"},{t:400,n:"神聖傳說 🌌"},{t:500,n:"無雙傳說 🐉"},{t:600,n:"最強傳說 II 🔱✨"},{t:700,n:"最強傳說 🔱"},{t:800,n:"戰場傳說 III 👑🔥"},{t:900,n:"戰場傳說 II 👑✨"},{t:1000,n:"戰場傳說 👑"},{t:1100,n:"至尊星耀 🌟"},{t:1200,n:"永恆鑽石 💎"},{t:1300,n:"堅韌鉑金 🟦"},{t:1400,n:"英勇黃金 🟨"},{t:1500,n:"秩序白銀 ⬜"},{t:9999,n:"基石青銅 🟫"}];
     const WILL_RANKS = ["龍潭守護神獸 🐉","恆星發光體 ☀️","榮耀守門人 🏯","幾何朝聖者 💎","狂熱鍛造家 🔥","磐石守護衛 ⛰️","堅毅求道者 📜","大池常駐師 🌲","晨曦修行者 🌿","幾何小幼苗 🌱"];
     const POS_RANKS = ["萬物歸位者 📍","絕對領域者 📍","幾何狙擊手 📍","疾風神射手 📍","視覺導航員 📍","形狀觀察員 📍","幾何初學者 📍","尚未獲得"];
@@ -203,9 +221,12 @@
     async function handleLogin() {
         const pwd = document.getElementById('login-pwd').value;
         if ((user.id === ADMIN_ID && pwd === ADMIN_PWD) || pwd === user.password) {
-            if (user.id === ADMIN_ID) { document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='block'); user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; user.neverGiveUp = true; }
-            else { 
-                document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='none');
+            if (user.id === ADMIN_ID) { 
+                // 💡 只有老師特權帳號登入時，才會解鎖隨機競賽模式測試按鈕
+                document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools, #admin-random-btn').forEach(e=>e.style.display='block'); 
+                user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; user.neverGiveUp = true; 
+            } else { 
+                document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools, #admin-random-btn').forEach(e=>e.style.display='none');
                 fetchLocationData(user.id);
             }
             document.getElementById('step-pwd').style.display = 'none'; document.getElementById('step-mode').style.display = 'block';
@@ -255,25 +276,59 @@
     async function startGame(m) {
         mode = m; document.getElementById('login-overlay').style.display = 'none'; document.getElementById('main-container').style.display = 'flex';
         document.getElementById('active-box').innerHTML = `<img id="active-box-img" src="">`;
-        document.getElementById('jump-control').style.display = (mode === 'practice' || user.id === ADMIN_ID) ? 'block' : 'none';
-        if (mode === 'race') { document.getElementById('race-start-overlay').style.display = 'flex'; document.getElementById('race-stats').style.display = 'block'; currentNum = 1; restoreProgress(1); }
-        else { document.getElementById('race-start-overlay').style.display = 'none'; document.getElementById('race-stats').style.display = 'none'; const doc = await db.collection("players").doc(user.id).get(); currentNum = (doc.exists && doc.data().progress <= 36) ? doc.data().progress : 1; }
+        
+        // 💡 隨機模式初始化邏輯 (Fisher-Yates 洗牌演算法)
+        if (mode === 'random_race') {
+            randomOrderArray = [];
+            for (let i = 1; i <= 36; i++) randomOrderArray.push(i);
+            for (let i = randomOrderArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [randomOrderArray[i], randomOrderArray[j]] = [randomOrderArray[j], randomOrderArray[i]];
+            }
+            // 隨機競賽玩法底層機制同 race
+            document.getElementById('race-start-overlay').style.display = 'flex'; 
+            document.getElementById('race-stats').style.display = 'block'; 
+            document.getElementById('jump-control').style.display = 'none';
+            document.getElementById('masked-full-bg').style.display = 'block'; // 亮起全破隱形罩圖層
+            currentNum = 1; 
+            restoreProgress(1);
+        } else {
+            // 原有練習模式與常規競賽模式核心做法100%不變
+            document.getElementById('masked-full-bg').style.display = 'none';
+            document.getElementById('jump-control').style.display = (mode === 'practice' || user.id === ADMIN_ID) ? 'block' : 'none';
+            if (mode === 'race') { document.getElementById('race-start-overlay').style.display = 'flex'; document.getElementById('race-stats').style.display = 'block'; currentNum = 1; restoreProgress(1); }
+            else { document.getElementById('race-start-overlay').style.display = 'none'; document.getElementById('race-stats').style.display = 'none'; const doc = await db.collection("players").doc(user.id).get(); currentNum = (doc.exists && doc.data().progress <= 36) ? doc.data().progress : 1; }
+        }
         initGame(); switchTab('task');
     }
 
     function beginRaceNow() { document.getElementById('race-start-overlay').style.display = 'none'; currentNum = 1; penaltySeconds = 0; rawSeconds = 0; currentPosErr = 0; currentPropErr = 0; startTime = Date.now(); if(raceTimer) clearInterval(raceTimer); raceTimer = setInterval(() => { rawSeconds = Math.floor((Date.now() - startTime) / 1000); document.getElementById('stat-time').innerText = `${Math.floor(rawSeconds/60).toString().padStart(2,'0')}:${(rawSeconds%60).toString().padStart(2,'0')}`; document.getElementById('stat-penalty').innerText = penaltySeconds; document.getElementById('stat-pos-err').innerText = currentPosErr; document.getElementById('stat-prop-err').innerText = currentPropErr; }, 1000); initGame(); }
     
+    // 💡 核心取得當前題目正確 ID 的抽象函式（區分傳統與隨機）
+    function getCurrentTargetId() {
+        if (mode === 'random_race') {
+            return randomOrderArray[currentNum - 1].toString().padStart(2, '0');
+        }
+        return currentNum.toString().padStart(2, '0');
+    }
+
     function processPlacement(tId) {
         const poly = document.querySelector(`.target-poly[data-id="${tId}"]`);
         if (poly && poly.classList.contains('finished')) return;
-        if (tId === currentNum.toString().padStart(2, '0')) {
+        
+        const targetId = getCurrentTargetId();
+        if (tId === targetId) {
             stopFloatingZoom(); openCustomDialog({ title: "🎯 位置正確！", msg: "請判定全等性質：" });
             const btns = document.getElementById('dialog-btns'); btns.innerHTML = "";
             ["SSS","SAS","ASA","AAS","RHS","SSA"].forEach(ans => {
                 const b = document.createElement('button'); b.className = "btn"; b.style.width="auto"; b.innerText = ans;
                 b.onclick = async () => {
-                    if (answers[tId] && answers[tId].includes(ans)) { closeModal(); if (poly) poly.classList.add('finished'); playAnimate(tId); }
-                    else { currentPropErr++; triggerErrorFlash(20, (mode==='practice'?(ans==="SSA"?"這關真的有 SSA 嗎？再想一下三角形性質喔！":"性質判定錯誤，再觀察一下三角形的條件！"):"性質判定錯誤！(+20s)")); await logDiagnostic(tId, "property", ans); updateRaceDataToFirebase(); }
+                    if (answers[tId] && answers[tId].includes(ans)) { 
+                        closeModal(); 
+                        if (poly) poly.classList.add('finished'); 
+                        playAnimate(tId); 
+                    }
+                    else { currentPropErr++; triggerErrorFlash(20, (mode==='practice'||mode==='random_race'?(ans==="SSA"?"這關真的有 SSA 嗎？再想一下三角形性質喔！":"性質判定錯誤，再觀察一下三角形的條件！"):"性質判定錯誤！(+20s)")); await logDiagnostic(tId, "property", ans); updateRaceDataToFirebase(); }
                 };
                 btns.appendChild(b);
             });
@@ -282,7 +337,7 @@
     }
 
     async function updateRaceDataToFirebase() {
-        if (mode === 'race' && user && user.id !== ADMIN_ID) {
+        if ((mode === 'race' || mode === 'random_race') && user && user.id !== ADMIN_ID) {
             const totalNow = rawSeconds + penaltySeconds; const currentFinishCount = currentNum - 1;
             if (currentNum > (user.progress || 1)) await db.collection("players").doc(user.id).update({ progress: currentNum });
             await db.collection("players").doc(user.id).update({ currentProgress: currentNum, currentTotalTime: totalNow, currentPosErr, currentPropErr });
@@ -294,7 +349,7 @@
     }
 
     async function finishGame() {
-        if (mode === 'race') { 
+        if (mode === 'race' || mode === 'random_race') { 
             clearInterval(raceTimer); 
             const total = rawSeconds + penaltySeconds; 
             const updates = { lastRaceTime: total, progress: 36 }; 
@@ -302,6 +357,7 @@
             if (currentPosErr + currentPropErr >= 20) updates.neverGiveUp = true; 
             await db.collection("players").doc(user.id).update(updates); 
             
+            // V10.10 數據比對完美修復防火牆
             const lbRef = db.collection("leaderboard").doc(user.id); 
             const lbDoc = await lbRef.get(); 
             if (!lbDoc.exists || lbDoc.data().progress < 36 || (lbDoc.data().progress === 36 && total < lbDoc.data().total)) { 
@@ -334,9 +390,9 @@
 
     function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; document.getElementById('custom-dialog').style.display = 'none'; }
     function openCustomDialog({ title, msg = "" }) { const modal = document.getElementById('modal-overlay'), dialog = document.getElementById('custom-dialog'), content = document.getElementById('admin-content'), btns = document.getElementById('dialog-btns'); document.getElementById('dialog-title').innerText = title; document.getElementById('dialog-msg').innerText = msg; content.style.display = 'none'; btns.innerHTML = `<button class="btn" style="background:#ccc" onclick="closeModal()">關閉</button>`; modal.style.display = 'block'; dialog.style.display = 'block'; }
-    function triggerErrorFlash(sec, msg) { if (mode === 'race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
+    function triggerErrorFlash(sec, msg) { if (mode === 'race' || mode === 'random_race') penaltySeconds += sec; const overlay = document.getElementById('flash-overlay'); overlay.style.background = "rgba(255,0,0,0.4)"; setTimeout(() => overlay.style.background = "transparent", 300); if(msg) document.getElementById('dialog-msg').innerText = msg; }
     function backToModeSelect() { if(raceTimer) clearInterval(raceTimer); document.getElementById('main-container').style.display = 'none'; document.getElementById('victory-modal').style.display = 'none'; document.getElementById('login-overlay').style.display = 'flex'; document.getElementById('step-mode').style.display = 'block'; setTimeout(()=>document.getElementById('login-id').focus(), 100); }
-    function confirmRestartGame() { if(confirm("確定重來？")) { if(mode==='race') beginRaceNow(); else { document.getElementById('active-box').innerHTML = `<img id="active-box-img" src="">`; currentNum=1; initGame(); } } }
+    function confirmRestartGame() { if(confirm("確定重來？")) { if(mode==='race'||mode==='random_race') beginRaceNow(); else { document.getElementById('active-box').innerHTML = `<img id="active-box-img" src="">`; currentNum=1; initGame(); } } }
 
     function initAllSensors() {
         const layer = document.getElementById('sensor-layer'), tooltip = document.getElementById('ans-tooltip'); layer.innerHTML = "";
@@ -345,7 +401,17 @@
             poly.setAttribute("points", pts.map(p => `${p.x},${p.y * (707/750)}`).join(" "));
             poly.setAttribute("class", "target-poly");
             poly.setAttribute("data-id", id);
-            if (parseInt(id) < currentNum) poly.classList.add('finished');
+            
+            // 💡 處理已經拼完關卡的視覺鎖定（區分傳統與隨機）
+            if (mode === 'random_race') {
+                // 隨機模式下，判斷此格子 ID 是否已在完成清單中
+                const curTargetId = getCurrentTargetId();
+                const pastRandomIds = randomOrderArray.slice(0, currentNum - 1).map(n => n.toString().padStart(2,'0'));
+                if (pastRandomIds.includes(id)) poly.classList.add('finished');
+            } else {
+                if (parseInt(id) < currentNum) poly.classList.add('finished');
+            }
+            
             poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); };
             poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = poly.classList.contains('finished') ? 'none' : 'block'; } };
             poly.onmousemove = (e) => { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; };
@@ -354,7 +420,14 @@
         });
     }
 
-    function updateGame() { if (currentNum > 36) { finishGame(); return; } const id = currentNum.toString().padStart(2, '0'); document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; document.getElementById('active-box-img').src = `piece${id}.png`; }
+    function updateGame() { 
+        if (currentNum > 36) { finishGame(); return; } 
+        const targetId = getCurrentTargetId();
+        document.getElementById('prog-text').innerText = `進度：${currentNum} / 36`; 
+        document.getElementById('progress-fill').style.width = (currentNum/36*100) + "%"; 
+        document.getElementById('active-box-img').src = `piece${targetId}.png`; 
+    }
+    
     function playAnimate(id) {
         const pts = triangleData[id], cX = (pts[0].x+pts[1].x+pts[2].x)/3, cY = (pts[0].y+pts[1].y+pts[2].y)/3*(707/750);
         const img = document.createElement('img'); img.src = `piece${id}.png`; img.className='flying-piece'; img.style.left="80%"; img.style.top="50%"; img.style.width="200px";
@@ -362,15 +435,48 @@
         setTimeout(() => {
             img.style.left=(cX-100)+"px"; img.style.top=(cY-100)+"px"; img.style.opacity="0";
             setTimeout(() => {
-                document.getElementById('map-bg').src=`bg${id}.jpg`; addPermanentGlaze(id); img.remove(); currentNum++; 
+                img.remove();
+                if (mode === 'random_race') {
+                    addRandomClipPathPolygon(id); // 隨機模式：不改底圖，利用 SVG 遮罩割開露出 bg36.jpg 的精美反光三角形
+                } else {
+                    document.getElementById('map-bg').src=`bg${id}.jpg`; 
+                }
+                addPermanentGlaze(id);
+                currentNum++; 
                 if(mode==='practice') db.collection("players").doc(user.id).update({progress:currentNum}); else updateRaceDataToFirebase();
                 updateGame();
             }, 650);
         }, 50);
     }
 
+    // 💡 V11.0 核心黑魔術：利用 clipPath 遮罩動態吐出裁剪多邊形咬死座標，永不跑位
+    function addRandomClipPathPolygon(id) {
+        const pts = triangleData[id]; if(!pts) return;
+        const clipPath = document.getElementById('random-pool-mask');
+        const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+        poly.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" "));
+        clipPath.appendChild(poly);
+    }
+
     function addPermanentGlaze(id) { const pts = triangleData[id]; if(!pts) return; const g = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); g.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" ")); g.setAttribute("class", "liquid-glass-polygon"); document.getElementById('placed-polygons').appendChild(g); }
-    function restoreProgress(num) { document.getElementById('placed-polygons').innerHTML = ""; for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; }
+    
+    function restoreProgress(num) { 
+        document.getElementById('placed-polygons').innerHTML = ""; 
+        document.getElementById('random-pool-mask').innerHTML = ""; // 清空隨機裁剪遮罩
+        
+        if (mode === 'random_race') {
+            document.getElementById('map-bg').src = "bg00.jpg"; // 隨機模式永恆使用全空底圖
+            const pastIds = randomOrderArray.slice(0, num - 1).map(n => n.toString().padStart(2,'0'));
+            pastIds.forEach(id => {
+                addRandomClipPathPolygon(id);
+                addPermanentGlaze(id);
+            });
+        } else {
+            for (let i = 1; i < num; i++) addPermanentGlaze(i.toString().padStart(2, '0')); 
+            document.getElementById('map-bg').src = (num > 1) ? `bg${(num-1).toString().padStart(2, '0')}.jpg` : "bg00.jpg"; 
+        }
+    }
+    
     async function logDiagnostic(qId, type, val) { await db.collection("analytics").add({ userId: user.id, questionId: qId, type: type, value: val, time: firebase.firestore.FieldValue.serverTimestamp() }); }
 
     async function showAdmin() {
@@ -408,6 +514,7 @@
     function handleResize() { const wrapper = document.getElementById('game-wrapper'), outer = document.getElementById('game-wrapper-outer'); const ratio = Math.min((window.innerWidth < 1100 ? window.innerWidth - 30 : window.innerWidth - 370)/1000, (window.innerHeight - 100)/707, 0.95); wrapper.style.transform = `scale(${ratio})`; outer.style.width = (1000 * ratio) + "px"; outer.style.height = (707 * ratio) + "px"; }
     window.addEventListener('resize', handleResize);
 
+    // 💡 幾何座標與答案集：百分之百乾淨純淨、嚴防拼寫錯誤
     const triangleData = {"10":[{"x":623,"y":371},{"x":683,"y":248},{"x":850,"y":357}],"11":[{"x":539,"y":546},{"x":619,"y":379},{"x":718,"y":540}],"12":[{"x":668,"y":448},{"x":926,"y":505},{"x":771,"y":615}],"13":[{"x":384,"y":450},{"x":593,"y":419},{"x":533,"y":546}],"14":[{"x":380,"y":453},{"x":526,"y":550},{"x":373,"y":642}],"15":[{"x":245,"y":362},{"x":372,"y":449},{"x":302,"y":550}],"16":[{"x":56,"y":263},{"x":163,"y":482},{"x":51,"y":671}],"17":[{"x":61,"y":256},{"x":435,"y":36},{"x":278,"y":221}],"18":[{"x":240,"y":367},{"x":298,"y":551},{"x":140,"y":531}],"19":[{"x":690,"y":244},{"x":956,"y":178},{"x":857,"y":355}],"20":[{"x":861,"y":360},{"x":960,"y":184},{"x":930,"y":495}],"21":[{"x":321,"y":228},{"x":373,"y":442},{"x":245,"y":357}],"22":[{"x":536,"y":553},{"x":712,"y":544},{"x":557,"y":699}],"23":[{"x":290,"y":578},{"x":374,"y":457},{"x":367,"y":639}],"24":[{"x":624,"y":376},{"x":734,"y":370},{"x":664,"y":440}],"25":[{"x":746,"y":368},{"x":856,"y":362},{"x":842,"y":478}],"26":[{"x":641,"y":77},{"x":878,"y":40},{"x":747,"y":196}],"27":[{"x":377,"y":647},{"x":531,"y":555},{"x":552,"y":704}],"28":[{"x":141,"y":538},{"x":296,"y":558},{"x":195,"y":701}],"29":[{"x":742,"y":369},{"x":836,"y":481},{"x":668,"y":444}],"30":[{"x":136,"y":539},{"x":187,"y":702},{"x":55,"y":677}],"31":[{"x":860,"y":367},{"x":925,"y":500},{"x":848,"y":482}],"32":[{"x":286,"y":583},{"x":365,"y":644},{"x":199,"y":703}],"33":[{"x":751,"y":199},{"x":879,"y":46},{"x":830,"y":203}],"34":[{"x":886,"y":42},{"x":957,"y":171},{"x":836,"y":202}],"35":[{"x":723,"y":544},{"x":784,"y":647},{"x":564,"y":701}],"36":[{"x":58,"y":259},{"x":317,"y":222},{"x":167,"y":477}],"01":[{"x":493,"y":195},{"x":815,"y":207},{"x":490,"y":287}],"02":[{"x":492,"y":292},{"x":676,"y":248},{"x":598,"y":411}],"03":[{"x":491,"y":297},{"x":593,"y":413},{"x":509,"y":426}],"04":[{"x":383,"y":444},{"x":488,"y":297},{"x":504,"y":426}],"05":[{"x":327,"y":224},{"x":485,"y":291},{"x":378,"y":442}],"06":[{"x":331,"y":220},{"x":489,"y":196},{"x":487,"y":287}],"07":[{"x":494,"y":193},{"x":634,"y":77},{"x":742,"y":199}],"08":[{"x":444,"y":35},{"x":626,"y":77},{"x":493,"y":190}],"09":[{"x":442,"y":35},{"x":488,"y":192},{"x":283,"y":221}]};
     const answers = {"01":["ASA"],"02":["ASA","AAS"],"03":["SAS","SSS"],"04":["SSS","SAS","ASA","AAS","RHS"],"05":["SAS","ASA","AAS"],"06":["ASA","SAS","SSS","AAS"],"07":["SAS"],"08":["SSS"],"09":["ASA","SAS","AAS"],"10":["AAS"],"11":["SSS","AAS","ASA","SAS"],"12":["ASA","AAS","SAS","SSS","RHS"],"13":["ASA","AAS"],"14":["SAS","SSS","ASA","AAS"],"15":["ASA","SAS","AAS"],"16":["ASA"],"17":["ASA"],"18":["ASA","AAS"],"19":["ASA","AAS"],"20":["ASA"],"21":["SSS","SAS","RHS","AAS","ASA"],"22":["ASA","AAS"],"23":["ASA","AAS"],"24":["SAS"],"25":["SSS"],"26":["ASA"],"27":["AAS"],"28":["AAS"],"29":["SAS","ASA"],"30":["ASA"],"31":["ASA"],"32":["RHS"],"33":["ASA","AAS"],"34":["AAS"],"35":["SAS"],"36":["AAS","ASA"]};
 </script>
