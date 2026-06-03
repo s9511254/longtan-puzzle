@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>龍潭大池拼圖系統 V15.1 - 排行榜即時更名全同步完全體</title>
+    <title>龍潭大池拼圖系統 V15.2 - 幾何線索優化完全體</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
@@ -49,7 +49,6 @@
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); z-index: 20000; backdrop-filter: blur(4px); }
         .custom-dialog { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 24px; width: 650px; z-index: 20001; border: 6px solid var(--secondary); max-height: 85vh; overflow-y: auto; }
         
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
         .login-box { background: white; padding: 40px; border-radius: 20px; text-align: center; width: 440px; box-sizing: border-box; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
         .login-box h2, .login-box h3 { margin-top: 0; margin-bottom: 20px; }
         
@@ -76,6 +75,7 @@
         .admin-track-name-link { color: #00796b; font-weight: bold; text-decoration: underline; cursor: pointer; }
         .admin-track-name-link:hover { color: #ff5722; }
         
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--primary); z-index: 10000; display: flex; align-items: center; justify-content: center; }
         @media screen and (max-width: 1100px) { #main-container { flex-direction: column; } #mission-panel { width: 95%; height: auto; order: -1; } }
     </style>
 </head>
@@ -87,7 +87,7 @@
 
 <div id="login-overlay">
     <div class="login-box">
-        <h2 style="color:var(--primary);">龍潭大池拼圖 V15.1</h2>
+        <h2 style="color:var(--primary);">龍潭大池拼圖 V15.2</h2>
         <div id="step-id">
             <input type="text" id="login-id" maxlength="7" placeholder="學號 (7位數字)" onkeypress="if(event.keyCode==13) checkID()" autofocus>
             <button class="btn" style="background:var(--primary); color:white;" onclick="checkID()">下一步</button>
@@ -172,7 +172,7 @@
             <button id="random-skip-btn" class="btn" style="display:none; background:#ff9800; color:white; font-size:16px; padding:12px; margin-bottom:10px; box-shadow: 0 4px 6px rgba(0,0,0,0.15);" onclick="handleRandomSkip()">⏭️ 條件不足？換下一塊</button>
 
             <div id="race-stats" style="display:none; background:#fff3e0; padding:10px; border-radius:10px; color:#e65100; font-size:14px; margin-bottom:10px;">⏱️ 用時：<span id="stat-time">00:00</span> (+<span id="stat-penalty">0</span>)s<br>❌ 點錯：<span id="stat-pos-err">0</span> | 判錯：<span id="stat-prop-err">0</span> | <span id="blind-stat-label" style="display:inline;">盲點：<span id="stat-blind-err">0</span></span></div>
-            <div id="teacher-tools" class="toggle-switch" style="display:none;"><span>👁️ 顯示答案位置</span><input type="checkbox" id="ans-toggle" style="width:20px; height:20px; cursor:pointer;"></div>
+            <div id="teacher-tools" style="display:none; align-items:center; gap:10px; margin: 10px 0;"><span>👁️ 顯示答案位置</span><input type="checkbox" id="ans-toggle" style="width:20px; height:20px; cursor:pointer;"></div>
             <button class="btn" style="background:var(--gold);" onclick="showRank()">🏆 全校排行榜</button>
             <button class="btn" style="background:#9e9e9e; color:white;" onclick="confirmRestartGame()">🔄 重新開始</button>
             <button class="btn" style="background:var(--danger); color:white;" onclick="backToModeSelect()">🏠 返回首頁</button>
@@ -191,6 +191,22 @@
 <div id="custom-dialog" class="custom-dialog"><h2 id="dialog-title"></h2><p id="dialog-msg"></p><div id="admin-content" style="display:none; margin-top:15px;"></div><div id="dialog-btns" style="display:flex; justify-content:space-around; flex-wrap:wrap; gap:10px; margin-top:20px;"></div></div>
 
 <script>
+    // 響應式畫面自動縮放，確保地圖功能正常不跑位
+    function handleResize() {
+        const wrapper = document.getElementById('game-wrapper');
+        if (!wrapper) return;
+        const containerWidth = document.getElementById('game-wrapper-outer').clientWidth;
+        const scale = Math.min(containerWidth / 1000, 1);
+        if (scale < 1) {
+            wrapper.style.transform = `scale(${scale})`;
+            wrapper.style.height = `${707 * scale}px`;
+        } else {
+            wrapper.style.transform = 'none';
+            wrapper.style.height = '707px';
+        }
+    }
+    window.addEventListener('resize', handleResize);
+
     function silentPreload() { new Image().src = `bg00.jpg`; new Image().src = `bg36.jpg`; for (let i = 1; i <= 36; i++) { const id = i.toString().padStart(2, '0'); new Image().src = `piece${id}.png`; } }
     document.addEventListener('DOMContentLoaded', () => { silentPreload(); handleResize(); });
 
@@ -265,6 +281,7 @@
             refreshModeMenuButtons();
             if (user.id === ADMIN_ID) { 
                 document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='block'); 
+                if(document.getElementById('teacher-tools')) document.getElementById('teacher-tools').style.display = 'flex';
                 user.bestRaceTime = 1; user.bestPosErr = 0; user.bestPropErr = 0; user.willCount = 999; user.neverGiveUp = true; 
             } else { 
                 document.querySelectorAll('#admin-main-btn, #admin-side-btn, #teacher-tools').forEach(e=>e.style.display='none');
@@ -283,7 +300,6 @@
         }
     }
 
-    // 💡 V15.1 核心連鎖更名：改名當下，強制同步刷洗常規榜與隨機榜數據！
     function openStudentRenameDialog() {
         if (!user || user.id === ADMIN_ID) return alert("管理員號不支援更名操作。");
         const newName = prompt("請輸入您的新名字（中文或英文）：", user.name);
@@ -302,12 +318,10 @@
             user.name = finalName;
             document.getElementById('user-info-small').innerText = `👤 ${user.name}`;
             
-            // 💡 聯鎖爆破點：檢查並更新常規排行榜 (leaderboard)
             const lbRef = db.collection("leaderboard").doc(user.id);
             const lbDoc = await lbRef.get();
             if (lbDoc.exists) { await lbRef.update({ name: finalName }); }
 
-            // 💡 聯鎖爆破點：檢查並更新隨機排行榜 (random_leaderboard)
             const rlbRef = db.collection("random_leaderboard").doc(user.id);
             const rlbDoc = await rlbRef.get();
             if (rlbDoc.exists) { await rlbRef.update({ name: finalName }); }
@@ -349,19 +363,28 @@
     function startSystemCommandMonitor() { db.collection("system").doc("config").onSnapshot(doc => { if(doc.exists && doc.data().cmd === "FORCE_RELOAD" && user.id !== ADMIN_ID) { location.reload(); } }); }
     function startSessionMonitor() { setInterval(async () => { if (!hasCounted && (Date.now() - sessionStart) > 300000) { hasCounted = true; const ref = db.collection("players").doc(user.id); await db.runTransaction(async (t) => { const d = await t.get(ref); const n = (d.data().willCount || 0) + 1; t.update(ref, { willCount: n }); user.willCount = n; }); refreshHonorUI(); } }, 15000); }
     function refreshHonorUI() {
-        document.getElementById('user-info-small').innerText = `👤 ${user.name}`;
+        if(!user) return;
+        if(document.getElementById('user-info-small')) document.getElementById('user-info-small').innerText = `👤 ${user.name}`;
         const bestTime = user.bestRaceTime || 9999;
         const sRank = SPEED_RANKS.find(r => bestTime <= r.t) || SPEED_RANKS[SPEED_RANKS.length-1];
-        document.getElementById('rank-speed').innerText = sRank.n;
-        const speedWall = document.getElementById('medal-speed-wall'); speedWall.innerHTML = "";
-        SPEED_RANKS.slice(0, -1).reverse().forEach(r => { const m = document.createElement('div'); m.className = `medal-icon ${bestTime <= r.t ? 'medal-active' : ''}`; m.innerText = r.n.split(' ').pop(); m.title = `${r.n} (${r.t}秒內)`; speedWall.appendChild(m); });
+        if(document.getElementById('rank-speed')) document.getElementById('rank-speed').innerText = sRank.n;
+        const speedWall = document.getElementById('medal-speed-wall'); 
+        if(speedWall) {
+            speedWall.innerHTML = "";
+            SPEED_RANKS.slice(0, -1).reverse().forEach(r => { const m = document.createElement('div'); m.className = `medal-icon ${bestTime <= r.t ? 'medal-active' : ''}`; m.innerText = r.n.split(' ').pop(); m.title = `${r.n} (${r.t}秒內)`; speedWall.appendChild(m); });
+        }
         const pIdx = (user.bestPosErr === undefined) ? 7 : Math.min(6, Math.floor(user.bestPosErr / 3));
         const lIdx = (user.bestPropErr === undefined) ? 7 : Math.min(6, Math.floor(user.bestPropErr / 3));
-        document.getElementById('rank-pos').innerText = POS_RANKS[pIdx]; document.getElementById('rank-prop').innerText = PROP_RANKS[lIdx];
-        const wCount = user.willCount || 0; document.getElementById('rank-will').innerText = `修行 ${wCount} 次 / ${wCount >= 5 ? WILL_RANKS[9-Math.floor(wCount/5)]||'守護神' : '拼圖員'}`;
-        const specWall = document.getElementById('medal-special-wall'); specWall.innerHTML = "";
-        WILL_RANKS.slice().reverse().forEach((name, i) => { const target = (i + 1) * 5; const m = document.createElement('div'); m.className = `medal-icon ${wCount >= target ? 'medal-active' : ''}`; m.innerText = name.split(' ').pop(); m.title = `${name} (修行滿 ${target} 次)`; specWall.appendChild(m); });
-        if (user.neverGiveUp) { const m = document.createElement('div'); m.className = "medal-icon medal-active never-give-up"; m.innerText = "🛡️"; specWall.appendChild(m); }
+        if(document.getElementById('rank-pos')) document.getElementById('rank-pos').innerText = POS_RANKS[pIdx]; 
+        if(document.getElementById('rank-prop')) document.getElementById('rank-prop').innerText = PROP_RANKS[lIdx];
+        const wCount = user.willCount || 0; 
+        if(document.getElementById('rank-will')) document.getElementById('rank-will').innerText = `修行 ${wCount} 次 / ${wCount >= 5 ? WILL_RANKS[9-Math.floor(wCount/5)]||'守護神' : '拼圖員'}`;
+        const specWall = document.getElementById('medal-special-wall'); 
+        if(specWall) {
+            specWall.innerHTML = "";
+            WILL_RANKS.slice().reverse().forEach((name, i) => { const target = (i + 1) * 5; const m = document.createElement('div'); m.className = `medal-icon ${wCount >= target ? 'medal-active' : ''}`; m.innerText = name.split(' ').pop(); m.title = `${name} (修行滿 ${target} 次)`; specWall.appendChild(m); });
+            if (user.neverGiveUp) { const m = document.createElement('div'); m.className = "medal-icon medal-active never-give-up"; m.innerText = "🛡️"; specWall.appendChild(m); }
+        }
     }
 
     const lens = document.getElementById('floating-zoom-lens'), lensImg = document.getElementById('zoom-lens-img');
@@ -461,15 +484,18 @@
         updateGame();
     }
 
+    // ⚡ 核心拓樸幾何相依性防火牆 (優化簡短版)
     function checkGeometryDependency(targetId, userSelectedProperty = "") {
         if (mode !== 'random_race') return true; 
         
         const idNum = parseInt(targetId);
         const isReady = (checkId) => unlockedGeometryIds.includes(checkId.toString().padStart(2, '0'));
 
+        // 簡短優化：25關拿掉24相依，只要10沒拼就線索不足；且若10拼上則必定可以通過SSS
+        if (idNum === 10) return true;
         if (idNum === 20 && !isReady(19)) return false;
         if (idNum === 21 && userSelectedProperty === "SSS" && !isReady(5)) return false;
-        if (idNum === 25 && (!isReady(10) || !isReady(24))) return false;
+        if (idNum === 25 && !isReady(10)) return false; 
         if (idNum === 26 && !isReady(7)) return false;
         if (idNum === 27 && !isReady(14)) return false;
         if (idNum === 28 && !isReady(18)) return false;
@@ -531,7 +557,7 @@
                         closeModal();
                         currentBlindErr++;
                         triggerErrorFlash(5, "");
-                        openGameStyleAlertDialog("幾何線索不足！大池偵探提示：你雖然找到了位置，長目前的已知條件還無法確認在此位置全等喔！(+5s)\n請先按「換下一塊」去尋找鄰近的三角形吧！");
+                        openGameStyleAlertDialog("幾何線索不足！大池偵探提示：你雖然找到了位置，但目前的已知條件還無法確認在此位置全等喔！(+5s)\n請先按「換下一塊」去尋找鄰近的三角形吧！");
                         return;
                     }
 
@@ -646,7 +672,7 @@
             if (unlockedGeometryIds.includes(id)) { poly.classList.add('finished'); }
             
             poly.onclick = (e) => { e.stopPropagation(); processPlacement(id); };
-            poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = poly.classList.contains('finished') ? 'none' : 'block'; } };
+            poly.onmouseenter = (e) => { if (user && user.id === ADMIN_ID && document.getElementById('ans-toggle') && document.getElementById('ans-toggle').checked) { tooltip.innerText = `關卡 ${id}: ${answers[id].join('/')}`; tooltip.style.display = poly.classList.contains('finished') ? 'none' : 'block'; } };
             poly.onmousemove = (e) => { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; };
             poly.onmouseleave = () => tooltip.style.display = 'none';
             layer.appendChild(poly);
@@ -698,6 +724,7 @@
         if (!unlockedGeometryIds.includes(targetIdStr)) { unlockedGeometryIds.push(targetIdStr); }
         const pts = triangleData[targetIdStr]; if(!pts) return;
         const clipPath = document.getElementById('random-pool-mask');
+        if(!clipPath) return;
         const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
         poly.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" "));
         clipPath.appendChild(poly);
@@ -708,12 +735,12 @@
         const g = document.createElementNS("http://www.w3.org/2000/svg", "polygon"); 
         g.setAttribute("points", pts.map(p => `${p.x},${p.y*(707/750)}`).join(" "));
         g.setAttribute("class", "liquid-glass-polygon"); 
-        document.getElementById('placed-polygons').appendChild(g); 
+        if(document.getElementById('placed-polygons')) document.getElementById('placed-polygons').appendChild(g); 
     }
     
     function restoreProgress(num) { 
-        document.getElementById('placed-polygons').innerHTML = ""; 
-        document.getElementById('random-pool-mask').innerHTML = ""; 
+        if(document.getElementById('placed-polygons')) document.getElementById('placed-polygons').innerHTML = ""; 
+        if(document.getElementById('random-pool-mask')) document.getElementById('random-pool-mask').innerHTML = ""; 
         unlockedGeometryIds = [];
         
         if (mode === 'random_race') {
